@@ -337,7 +337,7 @@ function onMobile(port, windowId, token) {
   port.onMessage.addListener((msg) => {
     if (msg.type === 'location') {
       onMobileLocation(windowId, slot, msg.url);
-    } else if (['tint', 'viewport', 'keyboard', 'located', 'pageSize', 'scrolled', 'unloading'].includes(msg.type)) {
+    } else if (['tint', 'viewport', 'keyboard', 'located', 'pageSize', 'scrolled', 'unloading', 'toolbar'].includes(msg.type)) {
       sidebars.get(windowId)?.postMessage({ ...msg, slot });
     } else if (msg.type === 'gesture') {
       gestures.set(windowId, Date.now());
@@ -570,11 +570,45 @@ browser.webRequest.onBeforeRequest.addListener(
   ['blocking'],
 );
 
+// Safari applies a page's `upgrade-insecure-requests` to http://localhost
+// too (Firefox and Chrome leave localhost alone), so a dev server sending it
+// loses every stylesheet, script and image on a real iPhone. Phones drawn as
+// iPhones (WebKit) do the same here, and say why.
+const LOOPBACK = /^http:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?\//i;
+const upgradingFrames = new Set(); // frameIds of phone documents Safari would upgrade
+
+function noteUpgrade(details) {
+  const csp = details.responseHeaders.find((h) => h.name.toLowerCase() === 'content-security-policy')?.value || '';
+  const upgrades = LOOPBACK.test(details.url) && /(^|;)\s*upgrade-insecure-requests\b/i.test(csp) && Mirrorly.WEBKIT.includes(uaKeyFor(details));
+  if (!upgrades) {
+    upgradingFrames.delete(details.frameId);
+    return;
+  }
+  upgradingFrames.add(details.frameId);
+  const found = viewForFrame(details.frameId);
+  if (found && typeof found.windowId === 'number') {
+    sidebars.get(found.windowId)?.postMessage({
+      type: 'notice',
+      text: "This page's Content-Security-Policy has upgrade-insecure-requests, so Safari loads its files from https://localhost, which fails: the iPhone shows it unstyled, as a real one would. Leave the directive out in development.",
+    });
+  }
+}
+
+browser.webRequest.onBeforeRequest.addListener(
+  (details) => {
+    if (!LOOPBACK.test(details.url) || !upgradingFrames.has(details.frameId)) return;
+    return { redirectUrl: details.url.replace(/^http:/i, 'https:') };
+  },
+  { urls: ['http://*/*'], types: ['stylesheet', 'script', 'image', 'font', 'media', 'xmlhttprequest', 'object', 'other', 'imageset', 'ping', 'websocket'] },
+  ['blocking'],
+);
+
 // Most sites forbid being framed. Drop those rules for the mobile view's
 // document only; nested frames inside it keep theirs.
 browser.webRequest.onHeadersReceived.addListener(
   (details) => {
     if (!isMobileDocument(details)) return;
+    noteUpgrade(details);
     const responseHeaders = [];
     for (const header of details.responseHeaders) {
       const name = header.name.toLowerCase();

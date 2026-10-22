@@ -136,6 +136,20 @@ var Mirrorly = {
 
   FRAME_PREFIX: 'mirrorly-phone',
 
+  // How far short of the area below the status bar Safari 26 ends an
+  // iPhone's viewports (portrait, toolbar showing), whatever the page's
+  // viewport-fit: the small one (svh, dvh, innerHeight, fixed bottom:0) and
+  // the large one (lvh, vh). The page itself still draws to the screen's
+  // bottom edge, behind the toolbar. Measured in the iOS 26.0 Simulator on
+  // an iPhone SE, 16e, 17 Pro and 17 Pro Max: the same on all four.
+  SAFARI_VIEWPORT: { small: 98, large: 58 },
+
+  // Safari 26's toolbar shrinks to a small domain pill once the page is
+  // scrolled down, and comes back on scrolling up. The dynamic viewport
+  // (dvh, innerHeight, fixed bottom:0) then grows to the large one. Measured
+  // in the iOS 26.0 Simulator on an iPhone 17 Pro, swiping with XCUITest.
+  SAFARI_TOOLBAR: { collapseMs: 280, expandMs: 400, collapseAfter: 12, expandAfter: 6 },
+
   // An agent app's MCP clientInfo name, as people call the app.
   agentAppName(name) {
     const names = [

@@ -395,6 +395,13 @@
 .glass.pill { flex: 1; min-width: 0; gap: 8px; padding: 0 14px; justify-content: space-between; }
 .glass.pill svg { flex: none; width: 22px; height: 22px; }
 .glass.pill .dom { font-size: 17px; letter-spacing: -.2px; }
+/* Scrolled down: just the domain, in a small pill */
+.saf-bar.compact { justify-content: center; gap: 0; }
+.saf-bar.compact .glass.circle { width: 0; opacity: 0; overflow: hidden; }
+.saf-bar.compact .glass.pill { flex: none; width: var(--compact-w, 87px); height: 31px; border-radius: 15.5px; padding: 0; justify-content: center; }
+.saf-bar.compact .glass.pill svg { width: 0; opacity: 0; }
+.saf-bar.compact .glass.pill .dom { font-size: 12.5px; font-weight: 500; letter-spacing: 0; }
+.saf-bar .glass, .saf-bar .glass svg { overflow: hidden; }
 
 .saf-top {
   position: absolute;

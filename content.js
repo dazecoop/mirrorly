@@ -7,42 +7,117 @@
 
 (() => {
   const isTop = window.top === window;
-  const [prefix, windowIdText, uaKey, token, screenW, screenH, dpr, textSize, touch, insetBottom, keyboardCover] = isTop
+  const [prefix, windowIdText, uaKey, token, screenW, screenH, dpr, textSize, touch, insetBottom, keyboardCover, safariViewport] = isTop
     ? []
     : String(window.name).split('|');
   const isMobile = !isTop && prefix === Mirrorly.FRAME_PREFIX;
   if (!isTop && !isMobile) return;
   let bottomSpace = null; // room below the page for Safari's toolbar
+  // Safe-area insets only apply to pages that extend under the browser's
+  // bars with viewport-fit=cover.
+  const coversScreen = () => /viewport-fit\s*=\s*cover/i.test(document.querySelector('meta[name="viewport" i]')?.content || '');
 
   if (isMobile) {
     if (Mirrorly.UA[uaKey]) spoofNavigator(uaKey);
     if (touch === '1') MirrorlyTouch.enable();
-    // Safe-area insets only apply to pages that extend under the browser's
-    // bars with viewport-fit=cover.
-    const coversScreen = () => /viewport-fit\s*=\s*cover/i.test(document.querySelector('meta[name="viewport" i]')?.content || '');
-    if (touch === '1' || Number(insetBottom)) {
+    if (touch === '1' || Number(insetBottom) || safariViewport === '1') {
       MirrorlyStyles.start({
         noHover: touch === '1',
         insets: () => (Number(insetBottom) && coversScreen() ? { bottom: Number(insetBottom) } : null),
+        viewport: () => viewports(),
       });
     }
     if (Number(screenW)) spoofScreen(Number(screenW), Number(screenH), Number(dpr));
-    // Safari's floating toolbar sits over the page, but for pages that don't
-    // extend under it (no viewport-fit=cover) Safari lets the page scroll on
-    // until its end clears the bar, showing the page background below.
-    if (Number(insetBottom)) {
+    // Safari 26 ends the page's viewport above the frame's bottom (see
+    // Mirrorly.SAFARI_VIEWPORT): the page is told the shorter height, and
+    // can scroll until its end reaches the viewport's bottom, as on the phone.
+    if (safariViewport === '1') {
+      const page = window.wrappedJSObject;
+      const getter = (target, name, get) => {
+        try {
+          const desc = new page.Object();
+          desc.get = exportFunction(get, window);
+          desc.configurable = true;
+          page.Object.defineProperty(target, name, desc);
+        } catch {}
+      };
+      getter(page, 'innerHeight', () => viewports().dynamic);
+      // The browser's whole window: the screen.
+      if (Number(screenH)) getter(page, 'outerHeight', () => Number(screenH));
+      if (page.visualViewport) getter(page.visualViewport, 'height', () => viewports().dynamic);
       addEventListener(
         'DOMContentLoaded',
         () => {
-          if (coversScreen()) return;
+          getter(page.document.documentElement, 'clientHeight', () => viewports().dynamic);
           bottomSpace = document.createElement('style');
-          bottomSpace.textContent = `:root::after { content: ""; display: block; height: ${Number(insetBottom)}px; }`;
+          bottomSpace.textContent = `:root::after { content: ""; display: block; height: ${Mirrorly.SAFARI_VIEWPORT.small}px; }`;
           document.documentElement.append(bottomSpace);
         },
         { once: true },
       );
     }
   }
+
+  // The heights the page is told its small and large viewports have: the
+  // frame's (as this script sees it, unaffected by the page's overrides),
+  // less Safari 26's shortfall while the keyboard is down.
+  // The dynamic one is the small one while Safari's toolbar is showing and
+  // the large one once it has shrunk, easing between them.
+  function viewports() {
+    const h = innerHeight;
+    if (safariViewport !== '1' || keyboardShown) return { small: h, dynamic: h, large: h };
+    const { small, large } = Mirrorly.SAFARI_VIEWPORT;
+    return { small: h - small, dynamic: h - (small + (large - small) * toolbarProgress), large: h - large };
+  }
+
+  // --- Safari's toolbar shrinking as the page scrolls down (see
+  // Mirrorly.SAFARI_TOOLBAR). Scrolls the user made count (in this phone,
+  // or synced from another view); the page's own scrollTo doesn't, as on
+  // the phone.
+
+  let toolbarCompact = false;
+  let toolbarProgress = 0; // 0 showing … 1 shrunk
+  let toolbarTimer = 0;
+  let scrollRun = 0; // distance scrolled in the current direction
+  let lastScrollY = 0;
+
+  function setToolbar(compact) {
+    if (compact === toolbarCompact) return;
+    toolbarCompact = compact;
+    post({ type: 'toolbar', compact });
+    // Ease the viewport along with the toolbar, telling the page as it goes.
+    // (Timers, not animation frames: agent phones are background tabs.)
+    const { collapseMs, expandMs } = Mirrorly.SAFARI_TOOLBAR;
+    const from = toolbarProgress;
+    const to = compact ? 1 : 0;
+    const duration = compact ? collapseMs : expandMs;
+    const ease = compact ? (t) => 1 - (1 - t) ** 3 : (t) => (t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2);
+    const start = performance.now();
+    clearTimeout(toolbarTimer);
+    const step = () => {
+      const t = Math.min(1, (performance.now() - start) / duration);
+      toolbarProgress = from + (to - from) * ease(t);
+      MirrorlyStyles.updateViewport();
+      window.dispatchEvent(new Event('resize'));
+      window.visualViewport?.dispatchEvent(new Event('resize'));
+      if (t < 1) toolbarTimer = setTimeout(step, 16);
+    };
+    step();
+  }
+
+  function trackToolbar() {
+    const y = scrollY;
+    const dy = y - lastScrollY;
+    lastScrollY = y;
+    if (safariViewport !== '1' || keyboardShown || !dy) return;
+    const userScroll = Date.now() - lastInput < 3000 || performance.now() < applyingUntil + 500;
+    if (!userScroll) return;
+    scrollRun = Math.sign(dy) === Math.sign(scrollRun) ? scrollRun + dy : dy;
+    const { collapseAfter, expandAfter } = Mirrorly.SAFARI_TOOLBAR;
+    if (y <= 0 || scrollRun <= -expandAfter) setToolbar(false);
+    else if (scrollRun >= collapseAfter) setToolbar(true);
+  }
+  if (safariViewport === '1') addEventListener('scroll', trackToolbar, { passive: true });
 
   // The viewport line both views line up on when syncing scroll, as a
   // fraction of the viewport height. Low enough to clear most sticky headers.
@@ -139,7 +214,7 @@
       case 'freezeViewport':
         bottomSpace?.remove();
         window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-        MirrorlyStyles.freezeViewport(innerHeight).then(() => post({ type: 'pageSize', height: pageHeight() }));
+        MirrorlyStyles.freezeViewport(viewports().large).then(() => post({ type: 'pageSize', height: pageHeight() }));
         break;
       case 'measurePage':
         post({ type: 'pageSize', height: pageHeight() });
@@ -858,6 +933,7 @@
 
   function setKeyboard(show, el) {
     keyboardShown = show;
+    MirrorlyStyles.updateViewport();
     post({ type: 'keyboard', show, ...(show ? keyboardFor(el) : {}) });
   }
 
@@ -906,6 +982,7 @@
     virtualField = isTextField(el) ? el : null;
     const opening = !keyboardShown;
     keyboardShown = true;
+    MirrorlyStyles.updateViewport();
     post({ type: 'keyboard', show: true, ...(virtualField ? keyboardFor(virtualField) : keyboard) });
     if (isMobile && virtualField) centreField(virtualField, opening);
   }
@@ -1191,12 +1268,57 @@
   // Also the page's own background (the canvas colour), which the sidebar
   // puts behind the page so no white shows at its edges while the phone
   // rescales.
+  // And what's under Safari's floating toolbar, whose glass turns dark over
+  // dark content. Colours go out as rgb(), whatever the page wrote them in
+  // (oklch, color-mix, …).
   function reportTint() {
-    const tint = topColor();
-    const page = opaque(getComputedStyle(document.documentElement).backgroundColor) || (document.body && opaque(getComputedStyle(document.body).backgroundColor)) || 'rgb(255, 255, 255)';
-    if (`${tint}|${page}` === lastTint) return;
-    lastTint = `${tint}|${page}`;
-    post({ type: 'tint', color: tint, page });
+    const tint = toRgb(topColor());
+    const page = toRgb(opaque(getComputedStyle(document.documentElement).backgroundColor) || (document.body && opaque(getComputedStyle(document.body).backgroundColor)) || 'rgb(255, 255, 255)');
+    const under = toRgb(colorAt(innerWidth / 2, innerHeight - 60) || page);
+    const key = `${tint}|${page}|${under}`;
+    if (key === lastTint) return;
+    lastTint = key;
+    post({ type: 'tint', color: tint, page, under });
+  }
+
+  const colorCanvas = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
+  function toRgb(color) {
+    colorCanvas.clearRect(0, 0, 1, 1);
+    colorCanvas.fillStyle = '#fff';
+    colorCanvas.fillStyle = color;
+    colorCanvas.fillRect(0, 0, 1, 1);
+    const [r, g, b] = colorCanvas.getImageData(0, 0, 1, 1).data;
+    return `rgb(${r}, ${g}, ${b})`;
+  }
+
+  // A colour in any CSS syntax as [r, g, b, alpha 0–1].
+  function rgba(color) {
+    colorCanvas.clearRect(0, 0, 1, 1);
+    colorCanvas.fillStyle = 'rgba(0, 0, 0, 0)';
+    colorCanvas.fillStyle = color;
+    colorCanvas.fillRect(0, 0, 1, 1);
+    const [r, g, b, a] = colorCanvas.getImageData(0, 0, 1, 1).data;
+    return [r, g, b, a / 255];
+  }
+
+  // The background drawn at a point: the backgrounds from the element there
+  // up to the first opaque one, translucent layers mixed over it.
+  function colorAt(x, y) {
+    const layers = [];
+    for (let el = document.elementFromPoint(x, y); el; el = el.parentElement) {
+      const c = rgba(getComputedStyle(el).backgroundColor);
+      if (!c[3]) continue;
+      layers.push(c);
+      if (c[3] >= 0.99) break;
+    }
+    if (!layers.length) return null;
+    let [r, g, b] = layers.at(-1)[3] >= 0.99 ? layers.pop() : [255, 255, 255];
+    for (const [lr, lg, lb, la] of layers.reverse()) {
+      r = lr * la + r * (1 - la);
+      g = lg * la + g * (1 - la);
+      b = lb * la + b * (1 - la);
+    }
+    return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`;
   }
 
   function opaque(color) {

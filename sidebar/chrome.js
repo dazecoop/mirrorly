@@ -116,7 +116,8 @@ const MirrorlyChrome = (() => {
   function safari(c) {
     const { d, dark } = c;
     const fg = c.tintDark ? '#fff' : '#000';
-    const theme = dark ? 'dark' : 'light';
+    // The toolbar's glass follows the page under it where that's clear-cut.
+    const theme = c.underTheme || (dark ? 'dark' : 'light');
     let html = statusBar(c, c.tint, fg) + cutout(d);
     if (d.kind === 'ipad') {
       html += `<div class="saf-top ${theme}" style="top:${d.safeTop}px">
@@ -124,9 +125,15 @@ const MirrorlyChrome = (() => {
         <div class="saf-pill">${ICON.lines}<span class="dom">${c.domain}</span>${ICON.reload}</div>
         <span class="ico">${ICON.share}</span><span class="ico">${ICON.plus}</span><span class="ico">${ICON.safariTabs}</span></div>`;
     } else if (!c.keyboard) {
-      // Safari hides its toolbar while typing.
+      // Safari hides its toolbar while typing. Scrolled down, it shrinks to
+      // a small domain pill (sizes from the iOS 26 Simulator); data-full and
+      // data-compact give the sidebar both shapes, to animate between.
       const side = d.radius ? 34 : 16;
-      html += `<div class="saf-bar ${theme}" style="bottom:${Math.max(d.safeBottom, 10)}px;padding:0 ${side}px">
+      const bottom = Math.max(d.safeBottom, 10);
+      const full = { bottom, pill: d.width - side * 2 - 48 * 2 - 8 * 2 };
+      const small = { bottom: d.safeBottom ? 15 : 4, height: 31, width: Math.round(c.domain.length * 5.6 + 36), font: 12.5 };
+      const shape = c.compact ? `bottom:${small.bottom}px;height:${small.height}px` : `bottom:${bottom}px`;
+      html += `<div class="saf-bar ${theme}${c.compact ? ' compact' : ''}" style="${shape};padding:0 ${side}px;--compact-w:${small.width}px" data-full='${JSON.stringify(full)}' data-compact='${JSON.stringify(small)}'>
         <div class="glass circle">${ICON.back}</div>
         <div class="glass pill">${ICON.lines}<span class="dom">${c.domain}</span>${ICON.reload}</div>
         <div class="glass circle">${ICON.safariTabs}</div></div>`;

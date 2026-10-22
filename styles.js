@@ -8,6 +8,10 @@
 //   always reports as 0. Safari 26, for example, includes its floating
 //   toolbar in the bottom inset, and pages that opt in with
 //   viewport-fit=cover keep their bottom bars clear of it.
+// - viewport(): the heights the small (svh, dvh) and large (vh, lvh)
+//   viewport units should mean, when they aren't the frame's (Safari 26
+//   ends its viewports above the bottom of the frame). The units are then
+//   rewritten to variables that follow them.
 // - freezeViewport(): viewport-height units as fixed pixels, for full-page
 //   screenshots, where the frame grows to the page's height but 100vh
 //   should stay the height of the phone's screen.
@@ -27,9 +31,11 @@ var MirrorlyStyles = (() => {
   const ENV = /env\(\s*safe-area-inset-(top|right|bottom|left)\s*(?:,(?:[^()]|\([^()]*\))*)?\)/gi;
   // 100vh, 50svh, 12.5dvh, -1lvh, and vmin/vmax (the height on a phone in
   // portrait, though not in landscape).
-  const VH = /(-?\d*\.?\d+)(?:[sld]?vh|vmax)\b/gi;
+  const VH = /(-?\d*\.?\d+)([sld]?vh|vmax)\b/gi;
 
-  let options = { noHover: false, insets: () => null, viewportHeight: 0 };
+  let options = { noHover: false, insets: () => null, viewportHeight: 0, viewport: null };
+  let unitsVar = false; // viewport units rewritten to var(--mirrorly-svh/lvh)
+  let frozen = false;
 
   function swapMedia(text) {
     return text.replace(MEDIA_FEATURE, (match, any = '', feature, value) => {
@@ -46,8 +52,24 @@ var MirrorlyStyles = (() => {
   }
 
   function replaceViewportUnits(text) {
+    if (unitsVar) {
+      return text.replace(VH, (match, n, unit) => {
+        const name = { svh: 'svh', dvh: 'dvh' }[unit.toLowerCase()] || 'lvh';
+        return `calc(${n} * var(--mirrorly-${name}, 1${unit}))`;
+      });
+    }
     const h = options.viewportHeight;
     return h ? text.replace(VH, (match, n) => `${+((Number(n) * h) / 100).toFixed(3)}px`) : text;
+  }
+
+  // Keeps --mirrorly-svh, -dvh and -lvh at 1% of each viewport's height.
+  function updateViewportVar() {
+    if (!unitsVar || frozen) return;
+    const { small, dynamic, large } = options.viewport();
+    const root = document.documentElement.style;
+    root.setProperty('--mirrorly-svh', `${small / 100}px`);
+    root.setProperty('--mirrorly-dvh', `${dynamic / 100}px`);
+    root.setProperty('--mirrorly-lvh', `${large / 100}px`);
   }
 
   let done = new WeakSet();
@@ -71,10 +93,11 @@ var MirrorlyStyles = (() => {
           rule.selectorText = rule.selectorText.replaceAll(':hover', NO_HOVER);
         } catch {}
       }
-      if (rule.style && (rule.style.cssText.includes('safe-area-inset') || (options.viewportHeight && VH.test(rule.style.cssText)))) {
+      if (rule.style && (rule.style.cssText.includes('safe-area-inset') || ((options.viewportHeight || unitsVar) && VH.test(rule.style.cssText)))) {
         VH.lastIndex = 0;
         const text = replaceViewportUnits(replaceInsets(rule.style.cssText));
         if (text !== rule.style.cssText) {
+          guardTransitions();
           try {
             rule.style.cssText = text;
           } catch {}
@@ -133,6 +156,7 @@ var MirrorlyStyles = (() => {
       return;
     }
     rewriteRules(parsed.cssRules);
+    guardTransitions();
     const style = document.createElement('style');
     if (link.media) style.media = options.noHover ? swapMedia(link.media) : link.media;
     link.after(style);
@@ -154,6 +178,24 @@ var MirrorlyStyles = (() => {
     link.disabled = true;
   }
 
+  // Rewriting viewport units changes sizes the page may animate (its own
+  // `transition: min-height`, say). Those should jump to their new values,
+  // as if the page had loaded with them, not animate there (which background
+  // tabs never finish doing). So right before a change, transitions go off
+  // until the new values are applied, at the end of the current task.
+  let guard = null;
+  function guardTransitions() {
+    if (!unitsVar || guard) return;
+    guard = document.createElement('style');
+    guard.textContent = '*, *::before, *::after { transition: none !important; }';
+    document.documentElement.append(guard);
+    queueMicrotask(() => {
+      void document.documentElement.offsetHeight; // apply the new values now
+      guard.remove();
+      guard = null;
+    });
+  }
+
   function rewriteAll() {
     if (options.noHover) {
       for (const link of document.querySelectorAll('link[rel~="stylesheet" i][media]')) {
@@ -166,10 +208,13 @@ var MirrorlyStyles = (() => {
     for (const el of document.querySelectorAll('[style*="safe-area-inset"]')) {
       el.setAttribute('style', replaceInsets(el.getAttribute('style')));
     }
-    if (options.viewportHeight) {
+    if (options.viewportHeight || unitsVar) {
       for (const el of document.querySelectorAll('[style*="vh"], [style*="vmax"]')) {
         const text = replaceViewportUnits(el.getAttribute('style'));
-        if (text !== el.getAttribute('style')) el.setAttribute('style', text);
+        if (text !== el.getAttribute('style')) {
+          guardTransitions();
+          el.setAttribute('style', text);
+        }
       }
     }
     for (const sheet of document.styleSheets) rewriteSheet(sheet);
@@ -182,6 +227,13 @@ var MirrorlyStyles = (() => {
     // stylesheet (rewriting the ones already done), and resolves once
     // cross-origin sheets are in.
     async freezeViewport(height) {
+      if (unitsVar) {
+        // The units keep their present values as the frame grows.
+        updateViewportVar();
+        frozen = true;
+        await Promise.all(pending);
+        return;
+      }
       options.viewportHeight = height;
       done = new WeakSet();
       ruleCounts = new WeakMap();
@@ -189,10 +241,19 @@ var MirrorlyStyles = (() => {
       await Promise.all(pending);
     },
 
+    updateViewport: () => updateViewportVar(),
+
     // Called at document_start.
     start(opts) {
       options = { ...options, ...opts };
       const ready = () => {
+        // Decided once: the page's viewport tag is in by now.
+        const v = options.viewport?.();
+        unitsVar = Boolean(v && (v.small !== innerHeight || v.dynamic !== innerHeight || v.large !== innerHeight));
+        if (unitsVar) {
+          updateViewportVar();
+          addEventListener('resize', updateViewportVar);
+        }
         rewriteAll();
         let pending = 0;
         new MutationObserver(() => {

@@ -131,6 +131,13 @@ function safeAreaBottom(d, kind) {
   return Math.max(d.safeBottom, 10) + 48 + 17;
 }
 
+// Whether the page gets Safari 26's shortened viewports
+// (Mirrorly.SAFARI_VIEWPORT). The frame stays full height, as the page draws
+// behind the toolbar; the content script shortens what the page is told.
+function safariViewport(d, kind) {
+  return kind === 'safari' && d.kind === 'iphone' && !d.landscape ? 1 : 0;
+}
+
 function bezelOf(d) {
   const b = d.bezel || { side: BEZEL, top: BEZEL, bottom: BEZEL, radius: (d.radius || 0) + BEZEL };
   return d.landscape
@@ -139,6 +146,21 @@ function bezelOf(d) {
 }
 
 const colorCanvas = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
+
+// Safari 26's floating toolbar is light glass unless the page under it is
+// very dark (in the iOS 26 Simulator: dark over rgb(38,36,34), light over
+// pure red and mid blue); in dark mode, dark unless the page is very light.
+function underTheme(color) {
+  if (!color) return null;
+  colorCanvas.fillStyle = '#fff';
+  colorCanvas.fillStyle = color;
+  colorCanvas.fillRect(0, 0, 1, 1);
+  const [r, g, b] = colorCanvas.getImageData(0, 0, 1, 1).data;
+  const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  if (lum < 50) return 'dark';
+  if (lum > 200) return 'light';
+  return null;
+}
 function isDarkColor(color) {
   colorCanvas.fillStyle = '#fff';
   colorCanvas.fillStyle = color;
@@ -279,7 +301,7 @@ class Pane {
     const d = this.device();
     const kind = this.frameKind();
     const kb = MirrorlyChrome.supportsKeyboard(d, kind) ? MirrorlyChrome.keyboardLayout(d, kind) : null;
-    return [safeAreaBottom(d, kind), kb ? kb.viewBottom - kb.pageBottom : 0];
+    return [safeAreaBottom(d, kind), kb ? kb.viewBottom - kb.pageBottom : 0, safariViewport(d, kind)];
   }
 
   // The frame's name tells the content script inside it that it is a mobile
@@ -585,13 +607,52 @@ class Pane {
       dark: isDark(),
       tint: this.tint,
       tintDark: isDarkColor(this.tint),
+      underTheme: underTheme(this.underColor),
       domain: this.domain(),
       time: clock(),
       tabs: tabCount,
       keyboard: this.keyboardShown() ? this.keyboard : null,
+      compact: Boolean(this.toolbarCompact),
     });
     this.overlay.replaceChildren(...new DOMParser().parseFromString(html, 'text/html').body.childNodes);
     this.animateKeyboard();
+    this.animateToolbar();
+  }
+
+  // Safari's toolbar shrinking to its domain pill, or coming back. animate
+  // false jumps straight there (a new page, or a phone nobody watches).
+  setToolbar(compact, animate = true) {
+    if (Boolean(this.toolbarCompact) === compact) return;
+    this.toolbarCompact = compact;
+    this.toolbarChangedAt = animate ? performance.now() : 0;
+    this.renderOverlay();
+  }
+
+  // The overlay is redrawn from scratch, so the toolbar's change is played
+  // with the Web Animations API, picking up where it had got to.
+  animateToolbar() {
+    const bar = this.overlay.querySelector('.saf-bar');
+    if (!bar || !this.toolbarChangedAt) return;
+    const { collapseMs, expandMs } = Mirrorly.SAFARI_TOOLBAR;
+    const compact = this.toolbarCompact;
+    const duration = compact ? collapseMs : expandMs;
+    const elapsed = performance.now() - this.toolbarChangedAt;
+    if (elapsed >= duration || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const full = JSON.parse(bar.dataset.full);
+    const small = JSON.parse(bar.dataset.compact);
+    const timing = { duration, easing: compact ? 'cubic-bezier(.2, .8, .3, 1)' : 'cubic-bezier(.6, 0, .3, 1)', fill: 'backwards' };
+    const play = (el, a, b) => {
+      if (!el) return;
+      const anim = el.animate(compact ? [a, b] : [b, a], timing);
+      anim.currentTime = elapsed;
+    };
+    play(bar, { bottom: `${full.bottom}px`, height: '48px', gap: '8px' }, { bottom: `${small.bottom}px`, height: `${small.height}px`, gap: '0px' });
+    for (const circle of bar.querySelectorAll('.glass.circle')) play(circle, { width: '48px', opacity: 1 }, { width: '0px', opacity: 0 });
+    const pill = bar.querySelector('.glass.pill');
+    // (A fixed width throughout: the full pill otherwise flexes to fill the bar.)
+    play(pill, { flex: '0 0 auto', boxSizing: 'border-box', width: `${full.pill}px`, height: '48px', borderRadius: '24px', paddingInline: '14px' }, { flex: '0 0 auto', boxSizing: 'border-box', width: `${small.width}px`, height: `${small.height}px`, borderRadius: `${small.height / 2}px`, paddingInline: '0px' });
+    for (const icon of pill?.querySelectorAll('svg') || []) play(icon, { width: '22px', opacity: 1 }, { width: '0px', opacity: 0 });
+    play(pill?.querySelector('.dom'), { fontSize: '17px' }, { fontSize: `${small.font}px` });
   }
 
   // Earpiece, camera and Home button on phones that have them.
@@ -1032,6 +1093,7 @@ function initCapture() {
     } else if (msg.type === 'tint') {
       if (/^rgba?\([\d.,\s%]+\)$/.test(msg.color)) pane.tint = msg.color;
       if (/^rgba?\([\d.,\s%]+\)$/.test(msg.page)) pane.pageColor = msg.page;
+      if (/^rgba?\([\d.,\s%]+\)$/.test(msg.under)) pane.underColor = msg.under;
       pane.layout();
     } else if (msg.type === 'viewport') {
       pane.layoutWidth = msg.width;
@@ -1249,6 +1311,7 @@ function initAgent() {
     if (msg.type === 'tint') {
       if (/^rgba?\([\d.,\s%]+\)$/.test(msg.color)) pane.tint = msg.color;
       if (/^rgba?\([\d.,\s%]+\)$/.test(msg.page)) pane.pageColor = msg.page;
+      if (/^rgba?\([\d.,\s%]+\)$/.test(msg.under)) pane.underColor = msg.under;
       pane.layout();
     } else if (msg.type === 'viewport') {
       pane.layoutWidth = msg.width;
@@ -1256,6 +1319,8 @@ function initAgent() {
     } else if (msg.type === 'location') {
       pane.currentUrl = msg.url;
       pane.renderOverlay();
+    } else if (msg.type === 'toolbar') {
+      pane.setToolbar(msg.compact, false);
     } else if (['phoneReady', 'pageSize', 'scrolled', 'captured', 'repainted'].includes(msg.type)) {
       settle(msg.type, msg);
     } else if (msg.type === 'restricted') {
@@ -1314,6 +1379,7 @@ async function init() {
       // Computed colours only; anything else would end up in markup.
       if (/^rgba?\([\d.,\s%]+\)$/.test(msg.color)) pane.tint = msg.color;
       if (/^rgba?\([\d.,\s%]+\)$/.test(msg.page)) pane.pageColor = msg.page;
+      if (/^rgba?\([\d.,\s%]+\)$/.test(msg.under)) pane.underColor = msg.under;
       pane.layout();
     } else if (msg.type === 'viewport') {
       pane.layoutWidth = msg.width;
@@ -1324,8 +1390,11 @@ async function init() {
       pane.setKeyboard(msg);
     } else if (msg.type === 'unloading') {
       pane.setLoading(true);
+      pane.setToolbar(false, false);
     } else if (msg.type === 'phoneReady') {
       pane.setLoading(false);
+    } else if (msg.type === 'toolbar') {
+      pane.setToolbar(msg.compact);
     } else if (msg.type === 'located') {
       const d = pane.device();
       const name = d.id === 'custom' || d.kind === 'fit' ? 'phone' : d.label.split(' / ')[0];
