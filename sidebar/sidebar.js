@@ -640,8 +640,8 @@ class Pane {
     if (d.kind === 'fit') {
       Object.assign(this.phone.style, { width: `${sw}px`, height: `${sh}px`, transform: '', left: '0px', top: '0px', borderRadius: '' });
       Object.assign(this.screen.style, { left: '0px', top: '0px', width: `${sw}px`, height: `${sh}px`, borderRadius: '' });
-      Object.assign(this.viewport.style, { top: '0px', width: `${sw}px`, height: `${sh}px` });
-      if (this.frame) Object.assign(this.frame.style, { width: `${sw}px`, height: `${sh}px`, transform: '' });
+      Object.assign(this.viewport.style, { top: '0px', width: `${sw}px`, height: `${sh}px`, background: this.pageColor || '' });
+      if (this.frame) Object.assign(this.frame.style, { width: `${sw}px`, height: `${sh}px`, transform: '', background: this.pageColor || '' });
       this.phone.classList.remove('bezel', 'flat');
       this.renderOverlay();
       this.sizeLabel.textContent = `${sw}×${sh}`;
@@ -677,7 +677,9 @@ class Pane {
       // Safari (and every browser in landscape) fills the edges with the page colour.
       background: kind === 'safari' || d.landscape ? this.tint : '#fff',
     });
-    Object.assign(this.viewport.style, { left: `${g.left}px`, top: `${g.top}px`, width: `${g.width}px`, height: `${g.height}px` });
+    // The page's own background behind it: while the phone rescales, the
+    // page (drawn separately) and its frame can round to different pixels.
+    Object.assign(this.viewport.style, { left: `${g.left}px`, top: `${g.top}px`, width: `${g.width}px`, height: `${g.height}px`, background: this.pageColor || '' });
 
     // iOS lays out pages without a device-width viewport tag wider, then zooms
     // out to fit the screen.
@@ -687,6 +689,7 @@ class Pane {
       width: `${pageWidth}px`,
       height: `${g.height / zoom}px`,
       transform: zoom !== 1 ? `scale(${zoom})` : '',
+      background: this.pageColor || '',
     });
 
     this.renderOverlay();
@@ -1028,6 +1031,7 @@ function initCapture() {
       return;
     } else if (msg.type === 'tint') {
       if (/^rgba?\([\d.,\s%]+\)$/.test(msg.color)) pane.tint = msg.color;
+      if (/^rgba?\([\d.,\s%]+\)$/.test(msg.page)) pane.pageColor = msg.page;
       pane.layout();
     } else if (msg.type === 'viewport') {
       pane.layoutWidth = msg.width;
@@ -1244,6 +1248,7 @@ function initAgent() {
     if (!pane) return;
     if (msg.type === 'tint') {
       if (/^rgba?\([\d.,\s%]+\)$/.test(msg.color)) pane.tint = msg.color;
+      if (/^rgba?\([\d.,\s%]+\)$/.test(msg.page)) pane.pageColor = msg.page;
       pane.layout();
     } else if (msg.type === 'viewport') {
       pane.layoutWidth = msg.width;
@@ -1308,6 +1313,7 @@ async function init() {
     } else if (msg.type === 'tint') {
       // Computed colours only; anything else would end up in markup.
       if (/^rgba?\([\d.,\s%]+\)$/.test(msg.color)) pane.tint = msg.color;
+      if (/^rgba?\([\d.,\s%]+\)$/.test(msg.page)) pane.pageColor = msg.page;
       pane.layout();
     } else if (msg.type === 'viewport') {
       pane.layoutWidth = msg.width;

@@ -96,6 +96,12 @@
       case 'boxScroll':
         applyBoxScroll(msg);
         break;
+      case 'carousel':
+        applyCarousel(msg);
+        break;
+      case 'swipe':
+        applySwipe(msg);
+        break;
       case 'locate':
         locate(msg);
         break;
@@ -420,6 +426,214 @@
     },
     { capture: true, passive: true },
   );
+
+  // --- Carousels that move by transform (Embla/shadcn, Swiper, Splide, …)
+  //
+  // These never scroll, so box-scroll sync doesn't see them. Each view
+  // watches which slide is first in view; when the user moves one, the other
+  // views bring the same slide to the front, whatever their slides per view.
+
+  const CAROUSEL = '[aria-roledescription="carousel"], .swiper, .splide, .slick-slider, .embla, .glide, .keen-slider, .flickity-enabled';
+  const SLIDE = '[aria-roledescription="slide"], .swiper-slide, .splide__slide, .slick-slide:not(.slick-cloned), .glide__slide, .keen-slider__slide, .flickity-cell';
+  const carouselIndex = new WeakMap(); // root -> first slide in view, last seen
+  const carouselApplying = new WeakMap(); // root -> time until its moves are ours
+  let carouselTimer = 0;
+
+  function carousels() {
+    return [...document.querySelectorAll(CAROUSEL)].filter((root) => !root.parentElement?.closest(CAROUSEL));
+  }
+
+  function slidesOf(root) {
+    return [...root.querySelectorAll(SLIDE)].filter((s) => s.closest(CAROUSEL) === root || !s.parentElement.closest(CAROUSEL)?.parentElement?.closest(CAROUSEL));
+  }
+
+  // The first slide that is mostly in view, by its order among the slides.
+  function firstInView(root) {
+    const r = root.getBoundingClientRect();
+    const slides = slidesOf(root);
+    for (let i = 0; i < slides.length; i++) {
+      const s = slides[i].getBoundingClientRect();
+      if (s.width && s.right - Math.max(s.left, r.left) > s.width / 2 && s.left < r.right) return i;
+    }
+    return -1;
+  }
+
+  // Watches carousel movement (their transforms and classes change); reports
+  // a move that follows the user's own input, once it settles. Autoplay
+  // moves without input, so each view's autoplay is left to itself.
+  function watchCarousels() {
+    new MutationObserver(() => {
+      clearTimeout(carouselTimer);
+      carouselTimer = setTimeout(checkCarousels, 200);
+    }).observe(document.documentElement, { attributes: true, attributeFilter: ['style', 'class'], subtree: true });
+  }
+
+  function checkCarousels() {
+    const userMoved = Date.now() - lastInput < 3000;
+    carousels().forEach((root, ordinal) => {
+      const index = firstInView(root);
+      const before = carouselIndex.get(root);
+      carouselIndex.set(root, index);
+      if (index < 0 || before === undefined || before === index) return;
+      if (!active || !userMoved || performance.now() < (carouselApplying.get(root) || 0)) return;
+      post({ type: 'carousel', target: describeTarget(root), ordinal, index });
+    });
+  }
+
+  async function applyCarousel({ target, ordinal, index }) {
+    let root = resolveAt(target, target.segs.length - 1);
+    if (!root?.matches?.(CAROUSEL)) root = carousels()[ordinal];
+    if (!root) return;
+    const slides = slidesOf(root);
+    if (!slides.length) return;
+    const goal = Math.min(index, slides.length - 1);
+    carouselApplying.set(root, performance.now() + 2000);
+    // Swiper keeps its instance on the element.
+    const swiper = root.wrappedJSObject?.swiper;
+    if (swiper && typeof swiper.slideTo === 'function') {
+      swiper.slideTo(goal);
+    } else {
+      for (let tries = 0; tries < 3; tries++) {
+        const now = firstInView(root);
+        if (now < 0 || now === goal) break;
+        stepCarousel(root, goal - now);
+        await new Promise((r) => setTimeout(r, 450));
+      }
+    }
+    setTimeout(() => carouselIndex.set(root, firstInView(root)), 600);
+  }
+
+  // Moves `steps` slides (negative is back): with the arrow keys carousels
+  // listen for, or failing that, their own previous/next buttons.
+  function stepCarousel(root, steps) {
+    const key = steps > 0 ? 'ArrowRight' : 'ArrowLeft';
+    const before = firstInView(root);
+    for (let i = 0; i < Math.abs(steps); i++) {
+      root.dispatchEvent(new KeyboardEvent('keydown', { key, code: key, keyCode: steps > 0 ? 39 : 37, bubbles: true, cancelable: true }));
+    }
+    setTimeout(() => {
+      if (firstInView(root) !== before) return;
+      const label = steps > 0 ? /next|forward|right/i : /prev|back|left/i;
+      const scope = root.parentElement || root;
+      const button = [...scope.querySelectorAll('button, [role="button"], a')].find((b) => {
+        const name = `${b.getAttribute('aria-label') || ''} ${b.textContent} ${b.className}`;
+        return label.test(name) && !b.disabled;
+      });
+      for (let i = 0; i < Math.abs(steps) && button; i++) button.click();
+    }, 150);
+  }
+
+  if (document.readyState === 'loading') addEventListener('DOMContentLoaded', watchCarousels, { once: true });
+  else watchCarousels();
+
+  // --- Sideways swipes on anything else (a photo deck, a swipe-to-dismiss
+  // card). There's no position to line up, so the drag itself is replayed
+  // on the same element in the other views: same pace, scaled to its size.
+
+  let swipe = null;
+  let replayingSwipe = false;
+  let captureAllowed = false;
+
+  function scrollsSideways(el) {
+    for (let n = el; n && n !== document.documentElement; n = n.parentElement) {
+      if (/(auto|scroll)/.test(getComputedStyle(n).overflowX) && n.scrollWidth > n.clientWidth) return true;
+    }
+    return false;
+  }
+
+  addEventListener(
+    'pointerdown',
+    (e) => {
+      swipe = null;
+      if (!e.isTrusted || e.button !== 0 || !(e.target instanceof Element)) return;
+      swipe = { el: e.target, r: e.target.getBoundingClientRect(), x0: e.clientX, y0: e.clientY, t0: e.timeStamp, points: [[0, 0, 0]] };
+    },
+    true,
+  );
+  addEventListener(
+    'pointermove',
+    (e) => {
+      if (!swipe || !e.isTrusted || !(e.buttons & 1)) return;
+      const t = e.timeStamp - swipe.t0;
+      if (t - swipe.points.at(-1)[2] < 16) return;
+      swipe.points.push([e.clientX - swipe.x0, e.clientY - swipe.y0, t]);
+    },
+    true,
+  );
+  addEventListener(
+    'pointerup',
+    (e) => {
+      const s = swipe;
+      swipe = null;
+      if (!s || !e.isTrusted || !active) return;
+      s.points.push([e.clientX - s.x0, e.clientY - s.y0, e.timeStamp - s.t0]);
+      const [dx, dy] = s.points.at(-1);
+      if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+      // Carousels and scrolling boxes sync by position instead.
+      if (s.el.closest(CAROUSEL) || scrollsSideways(s.el) || !s.r.width || !s.r.height) return;
+      post({
+        type: 'swipe',
+        target: describeTarget(s.el),
+        w: s.r.width,
+        h: s.r.height,
+        fx: (s.x0 - s.r.left) / s.r.width,
+        fy: (s.y0 - s.r.top) / s.r.height,
+        points: s.points,
+      });
+    },
+    true,
+  );
+
+  // Pages often capture the pointer on pointerdown, which throws for a
+  // pointer that isn't really down. While a swipe is replayed, that's
+  // ignored rather than breaking the page's handler.
+  function allowReplayedCapture() {
+    if (captureAllowed) return;
+    captureAllowed = true;
+    const proto = window.wrappedJSObject.Element.prototype;
+    for (const name of ['setPointerCapture', 'releasePointerCapture']) {
+      const original = proto[name];
+      proto[name] = exportFunction(function (id) {
+        try {
+          return original.call(this, id);
+        } catch (err) {
+          if (!replayingSwipe) throw err;
+        }
+      }, window);
+    }
+  }
+
+  async function applySwipe({ target, w, h, fx, fy, points }) {
+    const el = resolveTarget(target);
+    if (!el || replayingSwipe) return;
+    allowReplayedCapture();
+    const r = el.getBoundingClientRect();
+    const kx = r.width / w;
+    const ky = r.height / h;
+    const x0 = r.left + fx * r.width;
+    const y0 = r.top + fy * r.height;
+    const fire = (type, x, y) =>
+      el.dispatchEvent(
+        new PointerEvent(type, {
+          bubbles: true, cancelable: true, composed: true, pointerId: 1, pointerType: 'mouse', isPrimary: true,
+          clientX: x, clientY: y, button: type === 'pointermove' ? -1 : 0, buttons: type === 'pointerup' ? 0 : 1,
+        }),
+      );
+    replayingSwipe = true;
+    try {
+      fire('pointerdown', x0, y0);
+      const start = performance.now();
+      for (const [dx, dy, t] of points.slice(1)) {
+        const wait = start + t - performance.now();
+        if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+        fire('pointermove', x0 + dx * kx, y0 + dy * ky);
+      }
+      const [dx, dy] = points.at(-1);
+      fire('pointerup', x0 + dx * kx, y0 + dy * ky);
+    } finally {
+      replayingSwipe = false;
+    }
+  }
 
   // --- Clicks
 
@@ -751,7 +965,9 @@
 
   // A text field focused in this view (by the user) opens the keyboard in
   // every phone; leaving it closes them again.
-  addEventListener('pointerdown', (e) => e.isTrusted && (lastInput = Date.now()), true);
+  // Letting go counts too: a slow drag, and the carousel settling after it,
+  // can outlast the window from the press alone.
+  for (const type of ['pointerdown', 'pointerup', 'wheel']) addEventListener(type, (e) => e.isTrusted && (lastInput = Date.now()), { capture: true, passive: true });
   addEventListener('keydown', (e) => e.isTrusted && (lastInput = Date.now()), true);
   document.addEventListener(
     'focusin',
@@ -972,11 +1188,15 @@
   // the bar as it was.
   let lastTint = null;
   let topEdge = null;
+  // Also the page's own background (the canvas colour), which the sidebar
+  // puts behind the page so no white shows at its edges while the phone
+  // rescales.
   function reportTint() {
     const tint = topColor();
-    if (tint === lastTint) return;
-    lastTint = tint;
-    post({ type: 'tint', color: tint });
+    const page = opaque(getComputedStyle(document.documentElement).backgroundColor) || (document.body && opaque(getComputedStyle(document.body).backgroundColor)) || 'rgb(255, 255, 255)';
+    if (`${tint}|${page}` === lastTint) return;
+    lastTint = `${tint}|${page}`;
+    post({ type: 'tint', color: tint, page });
   }
 
   function opaque(color) {

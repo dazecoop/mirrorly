@@ -97,9 +97,11 @@ function allowed(type) {
   switch (type) {
     case 'scroll':
     case 'boxScroll':
+    case 'carousel':
     case 'requestScroll':
       return settings.syncScroll;
     case 'click':
+    case 'swipe':
       return settings.syncClicks;
     case 'input':
     case 'focusField':
