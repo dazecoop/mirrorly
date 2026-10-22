@@ -221,11 +221,16 @@ class Pane {
     this.listenToKeyboard();
     this.listenToShotMenu($('.shoot'), $('.shot-menu'));
     $('.rotate').addEventListener('click', () => {
+      const before = snapshotPanes();
+      const was = this.phone.getBoundingClientRect();
       this.config.landscape = !this.config.landscape;
       saveDevices();
       // The screen size the page sees is fixed when the frame is created.
       this.rebuild();
       layoutAll();
+      movePanes(before, this);
+      spinPhone(this, was);
+      glassRipple(centreOf(this.phone));
     });
 
     fillDeviceSelect(this.deviceSelect);
@@ -235,20 +240,30 @@ class Pane {
     this.fillFrameSelect();
 
     this.deviceSelect.addEventListener('change', () => {
+      const before = snapshotPanes();
+      const was = this.phone.getBoundingClientRect();
       this.config.device = this.deviceSelect.value;
       saveDevices();
       this.fillFrameSelect();
       this.rebuild();
       layoutAll();
+      movePanes(before, this);
+      morphPhone(this, was);
+      glassRipple(centreOf(this.deviceSelect));
     });
     this.frameSelect.addEventListener('change', () => {
       const frameSettings = () => [this.uaKey(), ...this.pageInsets()].join('|');
-      const before = frameSettings();
+      const settingsBefore = frameSettings();
+      const before = snapshotPanes();
+      const was = this.phone.getBoundingClientRect();
       this.config.frame = this.frameSelect.value;
       saveDevices();
       // The user agent and insets are fixed when the frame is created.
-      if (frameSettings() !== before) this.rebuild();
+      if (frameSettings() !== settingsBefore) this.rebuild();
       layoutAll();
+      movePanes(before, this);
+      morphPhone(this, was);
+      glassRipple(centreOf(this.frameSelect));
     });
     const onCustomSize = () => {
       const w = Math.round(Number(this.customWidth.value));
@@ -441,6 +456,8 @@ class Pane {
         : this.config;
     port.postMessage({ type: 'capture', slot: this.slot, config, url: this.currentUrl, mode });
     showNotice(mode === 'full' ? 'Taking a full-page screenshot…' : 'Taking a screenshot…');
+    shutter(this);
+    glassRipple(centreOf(this.el.querySelector('.shoot')));
   }
 
   rebuild() {
@@ -895,6 +912,10 @@ if (!offscreen) new ResizeObserver(layoutAll).observe(panesEl);
 
 let noticeTimer = 0;
 function showNotice(text) {
+  // A saved screenshot: the notice pops, as the shot lands.
+  if (/^Screenshot saved/.test(text) && !reduceMotion()) {
+    notice.animate([{ scale: '1' }, { scale: '1.04', offset: 0.4 }, { scale: '1' }], { duration: 260, easing: EASE_OUT });
+  }
   noticeText.textContent = text;
   setNotice(true);
   clearTimeout(noticeTimer);
@@ -929,13 +950,278 @@ function addPane(config) {
   return pane;
 }
 
+// A device leaving: it drops out of the row at once (so the others start
+// moving into its space), fading where it stood, then goes.
 function removePane(pane) {
   if (panes.length < 2) return;
+  const before = snapshotPanes();
+  const origin = centreOf(pane.el);
+  // Out of the flow, but drawn where it was.
+  const { offsetLeft, offsetTop, offsetWidth, offsetHeight } = pane.el;
+  Object.assign(pane.el.style, {
+    position: 'absolute', left: `${offsetLeft}px`, top: `${offsetTop}px`,
+    width: `${offsetWidth}px`, height: `${offsetHeight}px`, pointerEvents: 'none', flex: 'none',
+  });
   panes.splice(panes.indexOf(pane), 1);
-  pane.destroy();
   saveDevices();
   updatePaneControls();
   layoutAll();
+  movePanes(before);
+  glassRipple(origin);
+  const out = pane.el.animate(
+    reduceMotion() ? [{ opacity: 1 }, { opacity: 0 }] : [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'scale(0.94)' }],
+    { duration: 180, easing: EASE_OUT, fill: 'forwards' },
+  );
+  out.finished.then(() => pane.destroy(), () => pane.destroy());
+}
+
+// --- Adding and removing devices: the new phone pops in, a leaving one pops
+// out, the others glide and rescale to their new places (FLIP), and a glass
+// ripple runs out over the row from where it happened.
+
+const EASE_OUT = 'cubic-bezier(0.23, 1, 0.32, 1)';
+const EASE_IN_OUT = 'cubic-bezier(0.77, 0, 0.175, 1)';
+const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function centreOf(el) {
+  const r = el.getBoundingClientRect();
+  return { x: r.left + r.width / 2, y: r.top + Math.min(r.height / 2, 260) };
+}
+
+// Where each pane, and its phone within it, is drawn now.
+function snapshotPanes() {
+  const out = new Map();
+  for (const pane of panes) {
+    const p = pane.el.getBoundingClientRect();
+    const f = pane.phone.getBoundingClientRect();
+    out.set(pane, { p, f: { left: f.left - p.left, top: f.top - p.top, width: f.width } });
+  }
+  return out;
+}
+
+// Plays each pane from where it was to where layout has just put it: the
+// column slides, and the phone in it moves and rescales.
+function movePanes(before, except = null) {
+  if (reduceMotion()) return;
+  const timing = { duration: 320, easing: EASE_IN_OUT };
+  // Phones mid-move can be bigger than their (already resized) columns.
+  unclipStages(timing.duration);
+  for (const [pane, was] of before) {
+    if (!panes.includes(pane) || pane.el.hidden || pane === except) continue;
+    const p = pane.el.getBoundingClientRect();
+    const dx = was.p.left - p.left;
+    if (Math.abs(dx) > 0.5) pane.el.animate([{ translate: `${dx}px 0` }, { translate: '0 0' }], timing);
+    if (pane.phone.hidden || !was.f.width) continue;
+    const f = pane.phone.getBoundingClientRect();
+    const k = was.f.width / (f.width || 1);
+    const fx = was.f.left - (f.left - p.left);
+    const fy = was.f.top - (f.top - p.top);
+    if (Math.abs(k - 1) < 0.005 && Math.abs(fx) < 0.5 && Math.abs(fy) < 0.5) continue;
+    // `translate` and `scale` compose with the phone's own transform
+    // (its layout scale, from the top left).
+    pane.phone.animate([{ translate: `${fx}px ${fy}px`, scale: `${k}` }, { translate: '0 0', scale: '1' }], timing);
+  }
+}
+
+// Runs fn once an animation ends, however it ends.
+// (And after a while regardless, should neither event come.)
+function whenDone(anim, fn) {
+  let done = false;
+  const once = () => {
+    if (done) return;
+    done = true;
+    fn();
+  };
+  anim.addEventListener('finish', once, { once: true });
+  anim.addEventListener('cancel', once, { once: true });
+  const t = anim.effect.getComputedTiming();
+  setTimeout(once, (t.endTime || 0) + 1000);
+}
+
+// A new device or browser: the phone, already laid out as the new one,
+// morphs from the old one's shape and place (its top left is its
+// transform-origin, so a translate and an uneven scale do it).
+const MORPH_MS = 300;
+function morphPhone(pane, was) {
+  if (reduceMotion() || !was.width || pane.phone.hidden) return;
+  const now = pane.phone.getBoundingClientRect();
+  if (!now.width) return;
+  const sx = was.width / now.width;
+  const sy = was.height / now.height;
+  const dx = was.left - now.left;
+  const dy = was.top - now.top;
+  if (Math.abs(sx - 1) < 0.01 && Math.abs(sy - 1) < 0.01 && Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
+  unclipStages(MORPH_MS);
+  pane.phone.animate(
+    [
+      { translate: `${dx}px ${dy}px`, scale: `${sx} ${sy}`, opacity: 0.6 },
+      { translate: '0 0', scale: '1 1', opacity: 1 },
+    ],
+    { duration: MORPH_MS, easing: EASE_IN_OUT },
+  );
+}
+
+// Screenshot: a shutter flash on the screen and a small press, then a
+// glowing outline of the phone drops into the notice at the bottom.
+function shutter(pane) {
+  if (pane.phone.hidden) return;
+  const flash = document.createElement('div');
+  flash.className = 'shutter';
+  pane.screen.append(flash);
+  whenDone(flash.animate([{ opacity: 0.85 }, { opacity: 0 }], { duration: 260, easing: EASE_OUT }), () => flash.remove());
+  if (reduceMotion()) return;
+  const c = centreOf(pane.phone);
+  const st = pane.stage.getBoundingClientRect();
+  pane.stage.style.transformOrigin = `${c.x - st.left}px ${c.y - st.top}px`;
+  pane.stage.animate([{ scale: '1' }, { scale: '0.97', offset: 0.35 }, { scale: '1' }], { duration: 220, easing: EASE_OUT });
+
+  const r = pane.phone.getBoundingClientRect();
+  const n = notice.getBoundingClientRect();
+  const ghost = document.createElement('div');
+  ghost.className = 'shot-ghost';
+  Object.assign(ghost.style, {
+    left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px`,
+    borderRadius: getComputedStyle(pane.phone).borderRadius === '0px' ? '8px' : `${parseFloat(pane.phone.style.borderRadius || 0) * (r.width / pane.phone.offsetWidth)}px`,
+  });
+  document.body.append(ghost);
+  // Into the notice's left end, small: where the notice comes to rest (it
+  // may still be sliding in), 8px off the bottom.
+  const k = Math.min(1, 28 / r.height);
+  const tx = n.left + 22 - (r.left + (r.width * k) / 2);
+  const ty = innerHeight - 8 - n.height / 2 - (r.top + (r.height * k) / 2);
+  whenDone(ghost.animate(
+      [
+        { transform: 'translate(0, 0) scale(1)', opacity: 0 },
+        { transform: 'translate(0, 0) scale(1)', opacity: 1, offset: 0.15 },
+        { transform: `translate(${tx}px, ${ty}px) scale(${k})`, opacity: 0.2 },
+      ],
+      { duration: 520, delay: 120, easing: EASE_IN_OUT, fill: 'backwards' },
+    ), () => ghost.remove());
+}
+
+// Columns clip their phones; while phones animate between sizes or turn,
+// they're let out.
+let unclipTimer = 0;
+function unclipStages(ms) {
+  panesEl.classList.add('animating');
+  clearTimeout(unclipTimer);
+  unclipTimer = setTimeout(() => panesEl.classList.remove('animating'), ms + 50);
+}
+
+// Rotate: the phone, already laid out in its new orientation, turns the 90°
+// from where it was drawn (overshooting a touch), with a squash-and-stretch
+// as it settles. `rotate`, `scale` and `translate` all pivot on the phone's
+// top left (its own transform-origin), so the keyframes carry the
+// translation that keeps it turning about its centre: one precomputed track,
+// run by the compositor.
+const SPIN_MS = 460;
+function spinPhone(pane, was) {
+  if (reduceMotion() || !was.width) return;
+  const now = pane.phone.getBoundingClientRect();
+  if (!now.width) return;
+  unclipStages(SPIN_MS);
+  const dir = pane.config.landscape ? -1 : 1; // start turned back to how it was
+  // The old phone's long side against the new one's, so it starts the size it was.
+  const k0 = Math.max(was.width, was.height) / Math.max(now.width, now.height);
+  const dx0 = was.left + was.width / 2 - (now.left + now.width / 2);
+  const dy0 = was.top + was.height / 2 - (now.top + now.height / 2);
+  const cx = now.width / 2;
+  const cy = now.height / 2;
+  const back = (t) => 1 + 2.2 * (t - 1) ** 3 + 1.2 * (t - 1) ** 2; // ease-out with a small overshoot
+  const settle = (t) => 1 - (1 - t) ** 4;
+  // Into its new place sooner than it turns, so it doesn't drift.
+  const arrive = (t) => 1 - (1 - t) ** 6;
+  const frames = [];
+  const N = 32;
+  for (let i = 0; i <= N; i++) {
+    const t = i / N;
+    const deg = dir * 90 * (1 - back(t));
+    const size = k0 + (1 - k0) * settle(t);
+    const wobble = 0.045 * Math.sin(t * Math.PI * 3) * (1 - t) ** 1.5;
+    const sx = size * (1 + wobble);
+    const sy = size * (1 - wobble);
+    const a = (deg * Math.PI) / 180;
+    const px = sx * cx;
+    const py = sy * cy;
+    const rx = px * Math.cos(a) - py * Math.sin(a);
+    const ry = px * Math.sin(a) + py * Math.cos(a);
+    const move = 1 - arrive(t);
+    frames.push({
+      offset: t,
+      translate: `${cx - rx + dx0 * move}px ${cy - ry + dy0 * move}px`,
+      rotate: `${deg}deg`,
+      scale: `${sx} ${sy}`,
+    });
+  }
+  pane.phone.animate(frames, { duration: SPIN_MS, easing: 'linear' });
+}
+
+// A ripple through the row from `origin`, Siri-style: a wave spreads out
+// and each phone gives a quick squash-and-stretch as the wave reaches it,
+// leaning away from where it started, while a faint iridescent rim rides the
+// wave's front. Only transforms and opacity are animated (the compositor
+// runs them, at the display's full rate); a per-pixel bend would be
+// re-filtered on the main thread every frame.
+const RIPPLE_MS = 520; // for the wave to cross the furthest phone
+const WOBBLE_MS = 380;
+
+let rippleEls = null;
+function rippleLayer() {
+  if (!rippleEls) {
+    const layer = document.createElement('div');
+    layer.className = 'glass-ripple';
+    const rim = document.createElement('div');
+    layer.append(rim);
+    document.body.append(layer);
+    rippleEls = { layer, rim };
+  }
+  return rippleEls;
+}
+
+function glassRipple(origin) {
+  if (reduceMotion() || offscreen) return;
+  const r = panesEl.getBoundingClientRect();
+  const ox = origin.x - r.left;
+  const oy = origin.y - r.top;
+  const reach = Math.hypot(Math.max(ox, r.width - ox), Math.max(oy, r.height - oy));
+
+  // The rim on the wave's front: drawn small once and scaled up on the GPU
+  // (a soft ring loses nothing), in a layer kept for the next ripple.
+  const RIM = 512;
+  const grow = (reach * 2) / RIM;
+  const { layer, rim } = rippleLayer();
+  Object.assign(layer.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` });
+  Object.assign(rim.style, { left: `${ox - RIM / 2}px`, top: `${oy - RIM / 2}px`, width: `${RIM}px`, height: `${RIM}px` });
+  rim.animate([{ transform: `scale(${grow * 0.04})`, opacity: 1 }, { transform: `scale(${grow})`, opacity: 0 }], { duration: RIPPLE_MS, easing: EASE_OUT });
+
+  // Each phone, as the wave passes it. The wave's front moves like the rim
+  // (ease-out over its reach), so a phone's moment is where that curve
+  // crosses its distance.
+  for (const pane of panes) {
+    if (pane.el.hidden || pane.phone.hidden) continue;
+    const c = centreOf(pane.phone);
+    const dx = c.x - origin.x;
+    const dy = c.y - origin.y;
+    const dist = Math.hypot(dx, dy);
+    const f = Math.min(1, dist / reach);
+    const delay = RIPPLE_MS * (1 - Math.cbrt(1 - f)); // inverse of the ease-out cubic
+    // Stronger near the origin, fading with distance; leans along the wave.
+    const k = 0.035 * (1 - 0.5 * f);
+    const lean = dist > 1 ? Math.max(-1, Math.min(1, dx / dist)) : 0;
+    // On the phone's stage, pivoting on the phone's centre (the phone itself
+    // is scaled from its top left).
+    const st = pane.stage.getBoundingClientRect();
+    pane.stage.style.transformOrigin = `${c.x - st.left}px ${c.y - st.top}px`;
+    pane.stage.animate(
+      [
+        { scale: '1 1', rotate: '0deg', translate: '0 0' },
+        { scale: `${1 + k} ${1 - k}`, rotate: `${lean * 0.6}deg`, translate: `${lean * 6}px 0`, offset: 0.3 },
+        { scale: `${1 - k * 0.5} ${1 + k * 0.5}`, rotate: `${-lean * 0.3}deg`, translate: `${-lean * 3}px 0`, offset: 0.65 },
+        { scale: '1 1', rotate: '0deg', translate: '0 0' },
+      ],
+      { duration: WOBBLE_MS, delay, easing: 'ease-in-out' },
+    );
+  }
 }
 
 function paneForSlot(slot) {
@@ -1026,9 +1312,18 @@ function buildControls() {
     // Each new device is one not shown yet, smallest iPhone first.
     const shown = new Set(panes.map((p) => p.config.device));
     const device = NEW_DEVICES.find((id) => !shown.has(id)) || NEW_DEVICES[0];
+    const before = snapshotPanes();
     const pane = addPane({ device, frame: 'safari' });
     saveDevices();
     if (pageUrl) pane.load(pageUrl);
+    layoutAll();
+    movePanes(before);
+    pane.el.animate(
+      reduceMotion() ? [{ opacity: 0 }, { opacity: 1 }] : [{ opacity: 0, transform: 'scale(0.94)' }, { opacity: 1, transform: 'none' }],
+      // A beat late, as the others make room.
+      { duration: 240, delay: 90, easing: EASE_OUT, fill: 'backwards' },
+    );
+    glassRipple(centreOf(pane.el));
     pane.el.scrollIntoView({ inline: 'end', behavior: 'smooth' });
   });
 }

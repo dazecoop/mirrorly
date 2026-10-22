@@ -8,14 +8,22 @@
   transform-origin: 0 0;
 }
 .phone[hidden] { display: none; }
+/* A soft indigo-to-orchid glow, as on the store slides */
 .phone.bezel {
   background: #0d0d0f;
   box-shadow:
     0 0 0 1.5px #5a5a60,
     0 0 0 4px #1c1c1f,
+    0 0 36px rgba(100, 95, 240, .26),
+    0 0 90px rgba(182, 95, 216, .14),
     0 18px 50px rgba(0, 0, 0, .35);
 }
-.phone.flat .screen { box-shadow: 0 0 0 1px var(--line); }
+.phone.flat .screen {
+  box-shadow:
+    0 0 0 1px var(--line),
+    0 0 36px rgba(100, 95, 240, .22),
+    0 0 90px rgba(182, 95, 216, .12);
+}
 
 /* Home-button iPhones: earpiece, front camera and Home button */
 .hardware { position: absolute; inset: 0; pointer-events: none; }

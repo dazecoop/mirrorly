@@ -263,6 +263,7 @@ button:hover, select:hover { border-color: var(--muted); }
 /* Devices sit side by side; when there are more than fit, sidebar.js gives
    each a fixed width (arrangePanes) and the row scrolls sideways. */
 #panes {
+  position: relative; /* for a device on its way out */
   flex: 1;
   min-height: 0;
   display: flex;
@@ -363,3 +364,31 @@ body.capture.frameless .screen { border-radius: 0 !important; }
 .agent-dot[data-state="on"] { background: #2fb36a; box-shadow: 0 0 0 3px rgba(47, 179, 106, .2); }
 .agent-open { flex: none; display: flex; align-items: center; gap: 2px; color: var(--accent); font-weight: 600; }
 .agent-open svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+/* The ripple's rim when a device is added or removed (sidebar.js): a faint
+   iridescent edge on the wave's crest. */
+.glass-ripple { position: fixed; z-index: 20; overflow: hidden; pointer-events: none; }
+.glass-ripple > div {
+  position: absolute;
+  opacity: 0;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, transparent 74%, rgba(110, 140, 246, .12) 84%, rgba(169, 123, 240, .26) 92%, rgba(226, 119, 195, .2) 96%, transparent 100%);
+  will-change: transform, opacity;
+}
+
+/* While phones move between sizes or turn (sidebar.js), columns don't clip them. */
+#panes.animating .stage { overflow: visible; }
+
+/* Screenshot (sidebar.js): the shutter flash, and the phone's outline that
+   drops into the notice. */
+.shutter { position: absolute; inset: 0; z-index: 9; background: #fff; opacity: 0; pointer-events: none; }
+.shot-ghost { opacity: 0; }
+.shot-ghost {
+  position: fixed;
+  z-index: 25;
+  pointer-events: none;
+  transform-origin: 0 0;
+  border: 2px solid rgba(169, 123, 240, .9);
+  background: rgba(124, 124, 240, .12);
+  box-shadow: 0 0 24px rgba(100, 95, 240, .45), 0 0 60px rgba(182, 95, 216, .25);
+}
