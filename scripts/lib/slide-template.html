@@ -13,9 +13,14 @@
   Layouts:
     phones  - phone captures placed on the stage, flat or tilted in 3D, with
               callout cards whose dashed connectors point at parts of them.
-    browser - a drawn Firefox window with the Mirrorly sidebar open beside
-              the desktop page, plus callouts.
-    panel   - the settings panel, large, with callouts on its rows.
+    lineup  - phone captures side by side at one scale, on one baseline, so
+              their sizes compare, each with a label below.
+    browser - a drawn, dark Firefox window with the Mirrorly sidebar open
+              beside the desktop page, scaled and free to run off the slide.
+    panel   - the Mirrorly sidebar on its own, as Firefox draws it.
+
+  Callout cards sit across the edge of a window or panel rather than on top
+  of it, with the connector running in to the part they name.
 
   Callout targets are markers placed inside an image (from the capture's
   .json boxes, or a fraction of the image), so connectors still land on the
@@ -68,21 +73,14 @@
   .more { margin-top: 26px; font-size: 17px; line-height: 1.5; color: #8f94a8; }
   .more:empty { display: none; }
 
-  .features {
-    position: absolute; bottom: 44px; left: 56px; z-index: 5;
-    display: flex; align-items: center;
-    padding: 13px 8px; border-radius: 14px;
-    background: rgba(255,255,255,0.035); border: 1px solid rgba(255,255,255,0.09);
-    font-size: 16px; font-weight: 600; color: #d4d6e2;
-    backdrop-filter: blur(6px);
+  /* Feature chips, under the copy, so the stage can run off the bottom. */
+  .features { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
+  .features span {
+    display: flex; align-items: center; gap: 8px; padding: 8px 13px; border-radius: 999px; white-space: nowrap;
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.10);
+    font-size: 14.5px; font-weight: 600; color: #d4d6e2;
   }
-  .features span { display: flex; align-items: center; gap: 9px; padding: 0 16px; white-space: nowrap; }
-  .features span + span { border-left: 1px solid rgba(255,255,255,0.10); }
-  .features .dot { width: 9px; height: 9px; border-radius: 50%; }
-
-  .dots { position: absolute; bottom: 64px; right: 56px; z-index: 5; display: flex; gap: 7px; }
-  .dots i { width: 7px; height: 7px; border-radius: 50%; background: #2e3050; display: block; }
-  .dots i.active { width: 22px; border-radius: 4px; background: linear-gradient(90deg, #5b63f0, #b65fd8); }
+  .features .dot { width: 8px; height: 8px; border-radius: 50%; }
 
   .stage { position: absolute; inset: 0; z-index: 1; pointer-events: none; perspective: 1800px; }
 
@@ -119,7 +117,7 @@
 
   /* A label pill (idently's lens tag), placed freely on the stage. */
   .tag {
-    position: absolute; z-index: 4;
+    position: absolute; z-index: 4; transform: translateX(-50%); white-space: nowrap;
     font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #dfe2ff;
     background: #1b1c44; border: 1px solid rgba(170,175,255,0.45);
     padding: 7px 13px; border-radius: 999px;
@@ -128,7 +126,7 @@
 
   /* ---- Browser layout: a drawn Firefox window with the sidebar open ---- */
   .ff {
-    position: absolute; border-radius: 12px; overflow: hidden; background: #1c1b22;
+    position: absolute; border-radius: 12px; overflow: hidden; background: #1c1b22; transform-origin: 0 0;
     box-shadow:
       0 0 0 1.5px rgba(170,180,255,0.55),
       0 0 50px rgba(100,95,240,0.45),
@@ -153,11 +151,12 @@
   .urlbar .rest { color: #9c9ca8; }
   .navbar .ext { width: 20px; height: 20px; border-radius: 5px; display: grid; place-items: center; background: #52525e; }
   .navbar .ext img { width: 16px; height: 16px; }
-  .ffbody { display: flex; background: #f9f9fb; }
-  .sidebar { flex: none; display: flex; flex-direction: column; background: #f9f9fb; border-right: 1px solid #d7d7db; position: relative; }
-  .sidebar-head { display: flex; align-items: center; gap: 7px; height: 30px; padding: 0 10px; font-size: 12px; font-weight: 700; color: #15141a; flex: none; }
-  .sidebar-head img { width: 15px; height: 15px; }
-  .sidebar-head .x { margin-left: auto; color: #5b5b66; font-weight: 400; font-size: 15px; }
+  .ffbody { display: flex; background: #1c1b22; overflow: hidden; }
+  .sidebar { flex: none; display: flex; flex-direction: column; background: #1c1b22; border-right: 1px solid #0c0c0d; position: relative; }
+  .sidebar-head { display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px; font-size: 13px; font-weight: 700; color: #fbfbfe; flex: none; background: #2b2a33; }
+  .sidebar-head img { width: 16px; height: 16px; }
+  .sidebar-head .x { margin-left: auto; color: #a8a8b3; font-weight: 400; font-size: 17px; }
+  .ff.panel .sidebar { border-right: 0; }
   .sidebar .shot, .ffpage .shot { position: relative; }
   .ffpage { flex: 1; overflow: hidden; position: relative; }
 
@@ -178,10 +177,8 @@
     <div class="subcopy" id="subcopy"></div>
     <div class="cta" id="cta"></div>
     <div class="more" id="more"></div>
+    <div class="features" id="features"></div>
   </div>
-
-  <div class="features" id="features"></div>
-  <div class="dots" id="dots"></div>
 
   <div class="stage" id="stage"></div>
   <svg class="wires" id="wires"></svg>
@@ -218,8 +215,6 @@
     document.getElementById('cta').textContent = opts.cta;
     document.getElementById('features').innerHTML = s.features
       .map((f, i) => `<span><i class="dot" style="background:${FEATURE_DOTS[i % FEATURE_DOTS.length]}"></i>${esc(f)}</span>`).join('');
-    document.getElementById('dots').innerHTML = opts.social ? '' : Array.from({ length: opts.total })
-      .map((_, i) => `<i class="${i === opts.index ? 'active' : ''}"></i>`).join('');
   }
 
   // A shot: an image at {x, y, w} (slide px), rounded to `radius` (image CSS
@@ -245,17 +240,18 @@
     return el;
   }
 
-  // Marker at a point in a shot: a box name from its capture (centre, or an
-  // edge with `at`), or {fx, fy} fractions of the image.
+  // Marker at a point in a shot: a box name from its capture (its centre),
+  // {box, fx, fy} for a point within that box, or {fx, fy} fractions of the
+  // whole image.
   function addMarker(shotEl, boxes, target) {
     const m = document.createElement('i');
     m.className = 'marker';
-    if (typeof target === 'string') {
-      const b = boxes[target];
+    const t = typeof target === 'string' ? { box: target } : target;
+    if (t.box) {
+      const b = boxes[t.box];
       const size = boxes._size;
-      const at = target.at || 'center';
-      m.style.left = ((b.x + b.w / 2) / size.w) * 100 + '%';
-      m.style.top = ((b.y + b.h / 2) / size.h) * 100 + '%';
+      m.style.left = ((b.x + b.w * (t.fx ?? 0.5)) / size.w) * 100 + '%';
+      m.style.top = ((b.y + b.h * (t.fy ?? 0.5)) / size.h) * 100 + '%';
     } else {
       m.style.left = target.fx * 100 + '%';
       m.style.top = target.fy * 100 + '%';
@@ -282,11 +278,22 @@
       const tx = r.left + r.width / 2;
       const ty = r.top + r.height / 2;
       const cr = card.getBoundingClientRect();
-      const fromLeft = tx < cr.left;
-      const x1 = fromLeft ? cr.left : cr.right;
-      const y1 = cr.top + cr.height / 2;
-      const mid = (x1 + tx) / 2;
-      wires += `<path class="wire" d="M${x1} ${y1} C${mid} ${y1}, ${mid} ${ty}, ${tx} ${ty}"/>`
+      // From the card's side facing the target, or its top/bottom edge
+      // (`anchor`), curving in to the target.
+      let x1, y1, path;
+      if (c.anchor === 'bottom' || c.anchor === 'top') {
+        x1 = Math.min(Math.max(tx, cr.left + 28), cr.right - 28);
+        y1 = c.anchor === 'bottom' ? cr.bottom : cr.top;
+        const mid = (y1 + ty) / 2;
+        path = `M${x1} ${y1} C${x1} ${mid}, ${tx} ${mid}, ${tx} ${ty}`;
+      } else {
+        const fromLeft = c.anchor ? c.anchor === 'left' : tx < cr.left;
+        x1 = fromLeft ? cr.left : cr.right;
+        y1 = cr.top + cr.height / 2;
+        const mid = (x1 + tx) / 2;
+        path = `M${x1} ${y1} C${mid} ${y1}, ${mid} ${ty}, ${tx} ${ty}`;
+      }
+      wires += `<path class="wire" d="${path}"/>`
         + `<circle class="wire-end" cx="${tx}" cy="${ty}" r="4.5"/><circle class="wire-end" cx="${x1}" cy="${y1}" r="3.5"/>`;
     }
     document.getElementById('wires').innerHTML = wires;
@@ -321,35 +328,63 @@
     drawCallouts(s, markers);
   }
 
+  // A Firefox window `B` at {x, y}, drawn at its real size (the captures'
+  // CSS px) and scaled by `scale`. The sidebar's size comes from its capture
+  // (shots[0]); the desktop page (shots[1]) is `desktopW` wide beside it.
+  // `panel: true` draws the sidebar alone, without the browser around it.
   async function renderBrowser(s, opts) {
     const B = s.browser;
+    const side = opts.boxes[0]._size;
     const ff = document.createElement('div');
-    ff.className = 'ff';
-    Object.assign(ff.style, { left: B.x + 'px', top: B.y + 'px', width: B.w + 'px' });
+    ff.className = `ff${B.panel ? ' panel' : ''}`;
+    Object.assign(ff.style, { left: B.x + 'px', top: B.y + 'px', width: side.w + (B.panel ? 0 : B.desktopW) + 'px', transform: `scale(${B.scale || 1})` });
     const ext = `<img src="${opts.logo}">`;
-    ff.innerHTML = `
+    const chrome = B.panel ? '' : `
       <div class="tabs"><span class="lights"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></span>
         ${B.tabs.map((t) => `<div class="tab${t.active ? ' active' : ''}"><i class="fav" style="background:${t.fav}"></i>${esc(t.title)}</div>`).join('')}</div>
       <div class="navbar">
         <svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3 5 8l5 5"/></svg>
         <svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="opacity:.45"><path d="m6 3 5 5-5 5"/></svg>
         <svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M13 8a5 5 0 1 1-1.5-3.6M13 2.5V5h-2.5"/></svg>
-        <div class="urlbar"><span>${esc(B.host)}<span class="rest">${esc(B.rest || '')}</span></span></div>
+        <div class="urlbar"><svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3.5" y="7" width="9" height="6.5" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg><span>${esc(B.host)}<span class="rest">${esc(B.rest || '')}</span></span></div>
         <div class="ext">${ext}</div>
-      </div>
-      <div class="ffbody" style="height:${B.h}px">
-        <div class="sidebar" style="width:${B.sidebarW}px"><div class="sidebar-head">${ext}Mirrorly<span class="x">×</span></div></div>
-        <div class="ffpage"></div>
+      </div>`;
+    ff.innerHTML = `${chrome}
+      <div class="ffbody" style="height:${side.h + 34}px">
+        <div class="sidebar" style="width:${side.w}px"><div class="sidebar-head">${ext}Mirrorly<span class="x">×</span></div></div>
+        ${B.panel ? '' : '<div class="ffpage"></div>'}
       </div>`;
     document.getElementById('stage').appendChild(ff);
     const markers = {};
-    const side = makeShot({ x: 0, y: 0, w: B.sidebarW, glow: false, radius: 0 }, opts.images[0], opts.boxes[0]);
-    ff.querySelector('.sidebar').appendChild(side);
-    const page = makeShot({ x: 0, y: 0, w: B.w - B.sidebarW, glow: false, radius: 0 }, opts.images[1], opts.boxes[1]);
-    ff.querySelector('.ffpage').appendChild(page);
-    for (const c of s.callouts || []) markers[c.id] = addMarker(c.shot === 1 ? page : side, null, c.target);
+    const sideShot = makeShot({ x: 0, y: 0, w: side.w, glow: false, radius: 0 }, opts.images[0], opts.boxes[0]);
+    ff.querySelector('.sidebar').appendChild(sideShot);
+    let page = null;
+    if (!B.panel) {
+      page = makeShot({ x: 0, y: 0, w: B.desktopW, glow: false, radius: 0 }, opts.images[1], opts.boxes[1]);
+      ff.querySelector('.ffpage').appendChild(page);
+    }
+    for (const c of s.callouts || []) {
+      markers[c.id] = c.shot === 1 ? addMarker(page, opts.boxes[1], c.target) : addMarker(sideShot, opts.boxes[0], c.target);
+    }
     await imagesLoaded();
     drawCallouts(s, markers);
+  }
+
+  // Phones side by side from `L.x`, at `L.scale` of their real size, standing
+  // on `L.baseline`, each labelled with its `tag`.
+  async function renderLineup(s, opts) {
+    const L = s.lineup;
+    const stage = document.getElementById('stage');
+    let x = L.x;
+    s.shots.forEach((shot, i) => {
+      const size = opts.boxes[i]._size;
+      const w = size.w * L.scale;
+      const el = makeShot({ ...shot, x, y: L.baseline - size.h * L.scale, w }, opts.images[i], opts.boxes[i]);
+      stage.appendChild(el);
+      if (shot.tag) (s.tags ||= []).push({ text: shot.tag, x: x + w / 2, y: L.baseline + 18 });
+      x += w + L.gap;
+    });
+    await imagesLoaded();
   }
 
   window.render = async function (s, opts) {
@@ -357,6 +392,7 @@
     document.body.className = [opts.social ? 'social' : '', s.hideFeatures ? 'no-features' : ''].join(' ');
     renderCopy(s, opts);
     if (s.layout === 'browser') await renderBrowser(s, opts);
+    else if (s.layout === 'lineup') await renderLineup(s, opts);
     else await renderPhones(s, opts);
     drawTags(s);
   };

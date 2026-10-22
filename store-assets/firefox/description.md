@@ -39,8 +39,8 @@ Links:
 
 Screenshots captions (in upload order):
 
-1. Desktop and mobile, side by side: Airbnb in a Firefox tab and in an iPhone in the Mirrorly sidebar.
-2. Scrolling, taps, typing and pages kept in sync, here with an iPhone and a Pixel together.
+1. Desktop and mobile, side by side: a travel site in a Firefox tab and in an iPhone in the Mirrorly sidebar.
+2. Scrolling, taps, typing and pages kept in sync, here with an iPhone and a Pixel together in the sidebar.
 3. Frames, browser bars and keyboards measured from real phones.
-4. iPhone, Pixel, Galaxy and more, in Safari, Chrome or Firefox.
-5. Touch, text size, appearance and keyboard settings, plus landscape and screenshots.
+4. iPhone, Pixel, Galaxy and more, drawn at the same scale, in Safari, Chrome or Firefox.
+5. Choose what syncs, plus touch, keyboard, text size and appearance settings.

@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Driftwood · Stays worth the journey</title>
+<!--
+  A made-up travel site for the store screenshots (capture.js serves it on
+  localhost), so the slides show no real brand. Photos are from Unsplash via
+  picsum.photos, under the Unsplash licence.
+-->
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="#">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="var(--accent)"/><circle cx="16" cy="13.5" r="5" fill="#fff"/><path d="M5 22.5c3.5-2.6 7-2.6 11 0s7.5 2.6 11 0" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg>
+      Driftwood
+    </a>
+    <nav class="nav">
+      <a class="on" href="#">Stays</a><a href="#">Experiences</a><a href="#">Journal</a>
+    </nav>
+    <div class="me">
+      <a href="#">Become a host</a>
+      <span class="avatar">JS</span>
+    </div>
+    <button class="search-pill" type="button" id="open-search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg>
+      <span><b>Where to?</b><small>Anywhere · Any week · Add guests</small></span>
+    </button>
+  </header>
+
+  <section class="hero">
+    <img src="img/hero.jpg" alt="">
+    <div class="hero-copy">
+      <h1>Slow down somewhere new.</h1>
+      <p>Hand-picked cabins, cottages and villas, from the Alps to the Atlantic coast.</p>
+    </div>
+    <form class="finder" onsubmit="return false">
+      <label class="where"><small>Where</small><input id="where" placeholder="Search destinations" autocomplete="off"></label>
+      <label><small>When</small><span>Any week</span></label>
+      <label><small>Who</small><span>2 guests</span></label>
+      <button type="submit"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg>Search</button>
+      <ul class="suggest" id="where-suggest" hidden></ul>
+    </form>
+  </section>
+
+  <div class="chips">
+    <a class="on" href="#">✦ All</a><a href="#">🏡 Cabins</a><a href="#">🌊 Coast</a><a href="#">⛰️ Mountains</a><a href="#">🏞️ Lakes</a><a href="#">🌾 Countryside</a><a href="#">🏛️ Cities</a><a href="#">🔥 Trending</a>
+  </div>
+
+  <main>
+    <section class="row">
+      <div class="row-head"><h2>Trending this week</h2><a href="#">See all</a></div>
+      <div class="cards" id="trending"></div>
+    </section>
+
+    <section class="promo">
+      <img src="img/sunrise.jpg" alt="">
+      <div>
+        <small>Autumn offer</small>
+        <h3>Stay three nights, pay for two</h3>
+        <p>At over 400 cabins and cottages until the end of November.</p>
+        <a href="#">Find a stay</a>
+      </div>
+    </section>
+
+    <section class="row">
+      <div class="row-head"><h2>Weekend escapes</h2><a href="#">See all</a></div>
+      <div class="cards" id="weekend"></div>
+    </section>
+
+    <section class="row">
+      <div class="row-head"><h2>From the journal</h2><a href="#">More stories</a></div>
+      <div class="stories">
+        <a class="story" href="#"><img src="img/hiker.jpg" alt=""><small>Walks</small><b>Seven hut-to-hut hikes for your first time</b></a>
+        <a class="story" href="#"><img src="img/coffee.jpg" alt=""><small>Cities</small><b>A slow morning in Lisbon, one café at a time</b></a>
+        <a class="story" href="#"><img src="img/yosemite.jpg" alt=""><small>Parks</small><b>Where to stay near Yosemite in the off season</b></a>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>© 2026 Driftwood, a demo site for Mirrorly's screenshots.</p>
+  </footer>
+
+  <nav class="tabbar">
+    <a class="on" href="#"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg>Explore</a>
+    <a href="#"><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>Saved</a>
+    <a href="#"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="14" rx="2"/><path d="M9 6V4h6v2"/></svg>Trips</a>
+    <a href="#"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="3.5"/><path d="M5 20c1.3-3.4 4-5 7-5s5.7 1.6 7 5"/></svg>Profile</a>
+  </nav>
+
+  <div class="sheet" id="sheet" hidden>
+    <div class="sheet-top">
+      <button type="button" class="back" id="close-search" aria-label="Back"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <label class="field">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg>
+        <input id="q" type="search" placeholder="Search destinations" autocomplete="off" enterkeyhint="search">
+      </label>
+    </div>
+    <div class="sheet-body">
+      <h4 id="sheet-title">Recent searches</h4>
+      <ul class="places" id="places"></ul>
+    </div>
+  </div>
+
+<script src="app.js"></script>
+</body>
+</html>

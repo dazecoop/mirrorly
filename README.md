@@ -68,7 +68,7 @@ rectangle at a phone's width. Mirrorly does more:
   admin panels and anything else behind a login show up in the mobile view
   too, already signed in.
 
-<img alt="NASA's homepage in an iPhone 17 Pro and a Pixel 9, side by side, with callouts for scrolling, taps, typing and pages" src="docs/preview-sync.png" />
+<img alt="A news site in the Mirrorly sidebar in an iPhone 17 Pro and a Pixel 10, side by side, beside the desktop page, with callouts for taps, pages and scrolling" src="docs/preview-sync.png" />
 
 ## How close is it to a real phone?
 
@@ -78,7 +78,7 @@ does above Safari's toolbar. The page is still drawn by Firefox's engine, not
 Safari's WebKit or Chrome's Blink, so engine-specific CSS can differ, and the
 page receives mouse events rather than touch events.
 
-<img alt="An iPhone 17 Pro with Wikipedia's search open and the iOS keyboard showing" src="docs/preview-real-phones.png" />
+<img alt="An iPhone 17 Pro in the Mirrorly sidebar with a site's search open and the iOS keyboard showing" src="docs/preview-real-phones.png" />
 
 ## Install
 
@@ -105,8 +105,10 @@ npm run icons            # icons/icon.svg -> the PNG sizes
 npm run store-assets     # capture + compose the store, social and docs images
 ```
 
-`scripts/capture.js` runs the real extension in Firefox (headless) against real
-sites and saves phone captures to `scripts/output/`, with boxes for the callouts.
+`scripts/capture.js` runs the real extension in Firefox (headless, in dark
+mode) against the made-up demo sites in `scripts/demo-sites/`, served locally,
+and saves sidebar, desktop and phone captures to `scripts/output/`, with boxes
+for the callouts.
 `scripts/compose-slides.js` turns those into the 1280×800 store slides and the
 2:1 social and docs images.
 

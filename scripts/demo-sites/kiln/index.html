@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Kiln Coffee Roasters · Fresh coffee, delivered</title>
+<!-- A made-up coffee shop for the store screenshots. Photos: Unsplash via picsum.photos. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Outfit:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="announce">Free UK delivery on orders over £30 · Roasted every Tuesday</div>
+  <header class="top">
+    <button class="icon menu" aria-label="Menu"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg></button>
+    <a class="logo" href="#"><span>KILN</span><small>Coffee Roasters</small></a>
+    <nav><a href="#">Coffee</a><a href="#">Subscriptions</a><a href="#">Equipment</a><a href="#">Brew guides</a><a href="#">Our cafés</a></nav>
+    <label class="search-box"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg><input id="desk-q" placeholder="Search coffee, kit and guides" autocomplete="off"><ul class="results" id="desk-results" hidden></ul></label>
+    <button class="icon find" id="open-search" aria-label="Search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg></button>
+    <button class="icon bag" aria-label="Basket"><svg viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg><i>2</i></button>
+  </header>
+
+  <section class="hero">
+    <div class="hero-copy">
+      <span class="eyebrow">New harvest · Ethiopia Guji</span>
+      <h1>Roasted on Tuesday. In your cup by Thursday.</h1>
+      <p>Small-batch coffee from farms we know by name, roasted in Bristol and posted the same day.</p>
+      <div class="ctas"><a class="btn" href="#">Shop coffee</a><a class="btn ghost" href="#">Start a subscription</a></div>
+    </div>
+    <img src="img/shop.jpg" alt="">
+  </section>
+
+  <section class="block">
+    <div class="head"><h2>Bestsellers</h2><a href="#">Shop all coffee →</a></div>
+    <div class="products" id="products"></div>
+  </section>
+
+  <section class="sub">
+    <div>
+      <h2>Never run out.</h2>
+      <p>Choose a coffee, pick how often, and we'll roast it fresh for every delivery. Pause or skip whenever you like.</p>
+      <a class="btn light" href="#">Build your subscription</a>
+    </div>
+    <ul><li><b>15%</b> off every bag</li><li><b>Free</b> delivery, always</li><li><b>1–4</b> week schedule</li></ul>
+  </section>
+
+  <section class="block">
+    <div class="head"><h2>Brew guides</h2><a href="#">All guides →</a></div>
+    <div class="guides">
+      <a href="#"><img src="img/cafe.jpg" alt=""><b>The perfect flat white at home</b><small>6 min · Espresso</small></a>
+      <a href="#"><img src="img/beans.jpg" alt=""><b>How fresh is too fresh? Resting your beans</b><small>4 min · Basics</small></a>
+      <a href="#"><img src="img/pour.jpg" alt=""><b>Cold brew in 12 hours, no kit needed</b><small>5 min · Cold</small></a>
+    </div>
+  </section>
+  <footer>Kiln Coffee Roasters is a demo site made for Mirrorly's screenshots.</footer>
+
+  <div class="sheet" id="sheet" hidden>
+    <div class="sheet-top">
+      <label class="field"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg><input id="q" type="search" placeholder="Search coffee, kit and guides" autocomplete="off" enterkeyhint="search"></label>
+      <button class="cancel" id="close-search" type="button">Cancel</button>
+    </div>
+    <div class="sheet-body" id="sheet-body"></div>
+  </div>
+<script src="app.js"></script>
+</body>
+</html>

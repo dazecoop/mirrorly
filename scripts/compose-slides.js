@@ -20,45 +20,49 @@ const OUTPUT_DIR = path.join(__dirname, 'output');
 const TEMPLATE_PATH = path.join(__dirname, 'lib', 'slide-template.html');
 const DEST_DIR = path.join(ROOT, 'store-assets', 'firefox');
 
-// Phone captures are 2x, so a phone `w` px wide on the slide shows at w/426
-// of its real size (an iPhone 17 Pro with its frame is 426 CSS px wide).
+// Each slide lists `shots` (images from scripts/output) and `callouts`
+// (cards at x/y whose dashed connector points at `target` in shot `shot`: a
+// box name from the capture's .json, {box, fx, fy} for a point in that box,
+// or {fx, fy} fractions of the image). Cards sit across the edge of the
+// window or panel, with `anchor` naming the side the connector leaves from.
 //
-// Each slide lists `shots` (images from scripts/output, placed in slide px,
-// optionally tilted) and `callouts` (cards at x/y whose dashed connector
-// points at `target` in shot `shot`: a box name from the capture's .json, or
-// {fx, fy} fractions of the image).
+// Browser slides draw the window at the captures' real size, scaled by
+// `scale`; it may run off the slide.
+const DRIFTWOOD_TAB = { title: 'Driftwood · Stays worth the journey', fav: '#ff6b4a' };
+const MERIDIAN_TAB = { title: 'The Meridian · News and sport', fav: '#c41e2a' };
+const PULSE_TAB = { title: 'Overview · Pulse', fav: '#10b981' };
+
 const SLIDES = [
   {
     file: '01-side-by-side.png',
     layout: 'browser',
-    shots: ['sidebar-airbnb.png', 'desktop-airbnb.png'],
+    shots: ['sidebar-driftwood.png', 'desktop-driftwood.png'],
     browser: {
-      x: 486, y: 84, w: 766, h: 528, sidebarW: 253,
-      host: 'airbnb.co.uk', rest: '/',
-      tabs: [{ title: 'Airbnb | Holiday rentals', fav: '#ff385c', active: true }, { title: 'NASA', fav: '#0b3d91' }],
+      x: 520, y: 182, scale: 0.6, desktopW: 1020, host: 'driftwood.travel', rest: '/',
+      tabs: [{ ...DRIFTWOOD_TAB, active: true }, PULSE_TAB],
     },
     callouts: [
-      { id: 'phone', shot: 0, target: { fx: 0.56, fy: 0.6 }, x: 846, y: 300, title: 'The page, as a phone sees it', sub: 'Real iPhone and Android frames', icon: 'phone', color: 'purple' },
-      { id: 'page', shot: 1, target: { fx: 0.5, fy: 0.3 }, x: 880, y: 520, title: 'Your desktop tab, in sync', sub: 'Scroll or click either one', icon: 'desktop', color: 'blue' },
+      { id: 'phone', target: { box: 'phone', fx: 0.5, fy: 0.03 }, x: 540, y: 138, anchor: 'bottom', title: 'The page, as a phone shows it', sub: 'Real iPhone and Android frames', icon: 'phone', color: 'purple' },
+      { id: 'page', shot: 1, target: { fx: 0.32, fy: 0.08 }, x: 942, y: 138, anchor: 'bottom', title: 'Your desktop tab, in sync', sub: 'Scroll or click either one', icon: 'desktop', color: 'blue' },
     ],
     eyebrow: 'MIRRORLY FOR FIREFOX',
     headline: ['Desktop & mobile,', 'side by side.'],
     subcopy: 'See the page you\'re on as a phone shows it, in Firefox\'s sidebar, right next to the desktop version.',
     more: 'Not a resized tab: real iPhone and Android frames beside the desktop page, with every scroll, tap and keystroke in sync.',
-    features: ['Desktop & mobile at once', 'Works on any site', 'Signed-in pages too'],
+    features: ['Desktop & mobile at once', 'Any site', 'Signed-in pages too'],
   },
   {
     file: '02-in-sync.png',
-    layout: 'phones',
-    shots: [
-      { image: 'phone-nasa-pixel.png', x: 778, y: 104, w: 300, tiltY: -16, dim: true },
-      { image: 'phone-nasa-safari.png', x: 560, y: 70, w: 316, tiltY: -16, z: 2 },
-    ],
+    layout: 'browser',
+    shots: ['sidebar-meridian.png', 'desktop-meridian.png'],
+    browser: {
+      x: 540, y: 196, scale: 0.56, desktopW: 1100, host: 'themeridian.news', rest: '/',
+      tabs: [{ ...MERIDIAN_TAB, active: true }, DRIFTWOOD_TAB],
+    },
     callouts: [
-      { id: 'scroll', shot: 1, target: { fx: 0.62, fy: 0.3 }, x: 1000, y: 92, title: 'Scrolling', sub: 'Lines up on the same content', icon: 'scroll', color: 'blue' },
-      { id: 'tap', shot: 1, target: { fx: 0.55, fy: 0.5 }, x: 1022, y: 232, title: 'Taps', sub: 'Menus, buttons and toggles', icon: 'tap', color: 'purple' },
-      { id: 'type', shot: 0, target: { fx: 0.7, fy: 0.58 }, x: 1030, y: 372, title: 'Typing', sub: 'Text copied into every view', icon: 'keyboard', color: 'pink' },
-      { id: 'pages', shot: 0, target: { fx: 0.62, fy: 0.9 }, x: 1022, y: 512, title: 'Pages', sub: 'Links, back, reloads, tabs', icon: 'link', color: 'green' },
+      { id: 'tap', target: { box: 'page', fx: 0.25, fy: 0.08 }, x: 548, y: 152, anchor: 'bottom', title: 'Taps', sub: 'Menus, buttons, toggles', icon: 'tap', color: 'purple' },
+      { id: 'pages', target: { fx: 0.6, fy: 0.27 }, x: 790, y: 152, anchor: 'bottom', title: 'Pages', sub: 'Links, back, reloads', icon: 'link', color: 'pink' },
+      { id: 'scroll', shot: 1, target: { fx: 0.1, fy: 0.12 }, x: 1022, y: 152, anchor: 'bottom', title: 'Scrolling', sub: 'Same content, all views', icon: 'scroll', color: 'blue' },
     ],
     eyebrow: 'EVERYTHING IN SYNC',
     headline: ['One scroll.', 'Every view.'],
@@ -68,55 +72,46 @@ const SLIDES = [
   },
   {
     file: '03-real-phones.png',
-    layout: 'phones',
-    shots: [{ image: 'phone-wiki-keyboard.png', x: 596, y: 44, w: 310 }],
+    layout: 'browser',
+    shots: ['sidebar-kiln.png'],
+    browser: { panel: true, x: 604, y: 58, scale: 0.74 },
     callouts: [
-      { id: 'island', target: 'island', x: 968, y: 54, title: 'Dynamic Island', sub: 'And every status bar', icon: 'island', color: 'blue' },
-      { id: 'bar', target: 'accessory', x: 968, y: 318, title: 'Safari\'s keyboard bar', sub: 'Chrome\'s and Firefox\'s too', icon: 'toolbar', color: 'purple' },
-      { id: 'kb', target: 'key', x: 968, y: 470, title: 'A keyboard that types', sub: 'iOS keyboard and Gboard', icon: 'keyboard', color: 'pink' },
-      { id: 'page', target: { fx: 0.3, fy: 0.25 }, x: 360, y: 610, title: 'Page sized like the phone', sub: 'Viewport, text size, safe areas', icon: 'resize', color: 'green', hidden: true },
+      { id: 'island', target: 'island', x: 944, y: 200, anchor: 'left', title: 'Dynamic Island', sub: 'And every status bar', icon: 'island', color: 'blue' },
+      { id: 'bar', target: { box: 'keyboard', fx: 0.93, fy: -0.1 }, x: 944, y: 470, anchor: 'left', title: 'Safari\'s keyboard bar', sub: 'Chrome\'s and Firefox\'s too', icon: 'toolbar', color: 'purple' },
+      { id: 'kb', target: { box: 'keyboard', fx: 0.82, fy: 0.42 }, x: 944, y: 610, anchor: 'left', title: 'A keyboard that types', sub: 'iOS keyboard and Gboard', icon: 'keyboard', color: 'pink' },
     ],
     eyebrow: 'PIXEL-ACCURATE',
     headline: ['Measured from', 'real phones.'],
     subcopy: 'Frames, browser bars, keyboards and safe areas are matched against screenshots from real iPhones, down to iOS\'s text size.',
-    more: 'More than a resized window: the page gets the viewport, user agent, pixel ratio and safe areas the phone would give it.',
+    more: 'The page gets the viewport, user agent, pixel ratio and safe areas the phone would give it.',
     features: ['Safari · Chrome · Firefox', 'iOS keyboard & Gboard', 'Light & dark'],
   },
   {
     file: '04-devices.png',
-    layout: 'phones',
+    layout: 'lineup',
+    lineup: { x: 520, baseline: 690, scale: 0.46, gap: 26 },
     shots: [
-      { image: 'phone-airbnb-se.png', x: 496, y: 188, w: 214, rotate: -9, dim: true },
-      { image: 'phone-natgeo-firefox.png', x: 626, y: 120, w: 226, rotate: -4, z: 2 },
-      { image: 'phone-lego-pixel.png', x: 1012, y: 150, w: 228, rotate: 8, dim: true },
-      { image: 'phone-wiki-gboard.png', x: 900, y: 104, w: 228, rotate: 4, z: 2 },
-      { image: 'phone-natgeo-chrome.png', x: 760, y: 68, w: 252, z: 3 },
-    ],
-    tags: [
-      { text: 'iPhone SE', x: 500, y: 652 },
-      { text: 'Firefox', x: 668, y: 620 },
-      { text: 'Chrome · Pro Max', x: 800, y: 612 },
-      { text: 'Galaxy · Gboard', x: 958, y: 640 },
-      { text: 'Pixel', x: 1150, y: 668 },
+      { image: 'phone-se-kiln.png', tag: 'iPhone SE' },
+      { image: 'phone-pro-driftwood.png', tag: 'iPhone 17 Pro' },
+      { image: 'phone-galaxy-pulse.png', tag: 'Galaxy S25 Ultra' },
+      { image: 'phone-pixel-meridian.png', tag: 'Pixel 10' },
     ],
     eyebrow: 'EVERY PHONE THAT MATTERS',
     headline: ['iPhone, Pixel,', 'Galaxy & more.'],
-    subcopy: 'iPhones from the SE to the 17 Pro Max, Pixel, Galaxy and Redmi, or any custom size, in portrait or landscape.',
-    more: 'Draw each one in Safari, Chrome or Firefox, or just the bare screen. Phones with identical screens share an entry, so the list stays short.',
+    subcopy: 'iPhones from the SE to the 17 Pro Max, Pixel, Galaxy and Redmi, the iPad mini, or any custom size.',
+    more: 'Drawn at the same scale, so sizes compare honestly. Each in Safari, Chrome or Firefox, or just the bare screen.',
     features: ['27 phones & tablets', 'Custom sizes', 'Portrait & landscape'],
   },
   {
     file: '05-touch-and-tools.png',
-    layout: 'phones',
-    shots: [
-      { image: 'phone-nasa-landscape.png', x: 690, y: 474, w: 540, rotate: -3, z: 1 },
-      { image: 'sidebar-settings.png', x: 520, y: 40, w: 420, radius: 14, z: 2 },
-    ],
+    layout: 'browser',
+    shots: ['sidebar-settings.png'],
+    browser: { panel: true, x: 500, y: 40, scale: 0.96 },
     callouts: [
-      { id: 'touch', shot: 1, target: 'touchMode', x: 990, y: 92, title: 'Feels like a touch screen', sub: 'Drag to scroll, no hover', icon: 'hand', color: 'purple' },
-      { id: 'keyboard', shot: 1, target: 'softKeyboard', x: 990, y: 210, title: 'Soft keyboard', sub: 'Slides up, synced everywhere', icon: 'keyboard', color: 'pink' },
-      { id: 'text', shot: 1, target: 'textSize', x: 990, y: 328, title: 'iOS text size & dark mode', sub: 'Match your own phone', icon: 'type', color: 'blue' },
-      { id: 'rotate', shot: 0, target: { fx: 0.8, fy: 0.3 }, x: 1010, y: 690, title: 'Rotate & screenshot', sub: 'PNG with transparent frame', icon: 'camera', color: 'green', hidden: true },
+      { id: 'sync', target: { box: 'syncScroll', fx: 0.93 }, x: 970, y: 168, anchor: 'left', title: 'Choose what syncs', sub: 'Scrolling, pages, taps, typing', icon: 'scroll', color: 'blue' },
+      { id: 'touch', target: { box: 'touchMode', fx: 0.93 }, x: 970, y: 330, anchor: 'left', title: 'Feels like a touch screen', sub: 'Drag to scroll, no hover', icon: 'hand', color: 'purple' },
+      { id: 'keyboard', target: { box: 'softKeyboard', fx: 0.93 }, x: 970, y: 470, anchor: 'left', title: 'Soft keyboard', sub: 'Slides up, synced everywhere', icon: 'keyboard', color: 'pink' },
+      { id: 'text', target: { box: 'appearance', fx: 0.99 }, x: 970, y: 610, anchor: 'left', title: 'iOS text size & dark mode', sub: 'Match your own phone', icon: 'type', color: 'green' },
     ],
     eyebrow: 'TOUCH, ROTATE, SCREENSHOT',
     headline: ['Made for testing', 'mobile layouts.'],
@@ -139,7 +134,7 @@ const SOCIAL = [
   },
   { from: '02-in-sync.png', out: { 'docs/preview-sync.png': 1.25 } },
   { from: '03-real-phones.png', out: { 'docs/preview-real-phones.png': 1.25 } },
-  { from: '04-devices.png', lift: 60, hideFeatures: true, out: { 'docs/preview-devices.png': 1.25 } },
+  { from: '04-devices.png', lift: 96, hideFeatures: true, out: { 'docs/preview-devices.png': 1.25 } },
 ];
 const SOCIAL_CTA = 'Free & open source';
 
@@ -196,7 +191,8 @@ async function socialImages(browser, template) {
       ...base,
       ...social,
       shots: base.shots.map((s) => (typeof s === 'string' ? s : { ...s, y: lift(s.y) })),
-      browser: base.browser && { ...base.browser, y: base.browser.y - 40, h: base.browser.h - 116 },
+      browser: base.browser && { ...base.browser, y: lift(base.browser.y) },
+      lineup: base.lineup && { ...base.lineup, baseline: lift(base.lineup.baseline) },
       callouts: (base.callouts || []).map((c) => ({ ...c, y: lift(c.y) })),
       tags: (base.tags || []).map((t) => ({ ...t, y: lift(t.y) })),
     };
