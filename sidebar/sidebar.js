@@ -1306,6 +1306,11 @@ function buildControls() {
   }
 
   document.getElementById('notice-close').addEventListener('click', () => setNotice(false));
+  // In a tab beside the page, as the sidebar can't navigate itself.
+  document.getElementById('source-link').addEventListener('click', (e) => {
+    e.preventDefault();
+    browser.tabs.create({ url: e.currentTarget.href, windowId: typeof windowId === 'number' ? windowId : undefined });
+  });
 
   addDeviceButton.addEventListener('click', () => {
     if (panes.length >= Mirrorly.MAX_DEVICES) return;

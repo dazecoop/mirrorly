@@ -268,7 +268,7 @@ button:hover, select:hover { border-color: var(--muted); }
   min-height: 0;
   display: flex;
   gap: 8px;
-  padding: 8px;
+  padding: 8px 8px 30px; /* room for the credit below the phones */
   overflow-x: auto;
 }
 .pane {
@@ -392,3 +392,42 @@ body.capture.frameless .screen { border-radius: 0 !important; }
   background: rgba(124, 124, 240, .12);
   box-shadow: 0 0 24px rgba(100, 95, 240, .45), 0 0 60px rgba(182, 95, 216, .25);
 }
+
+/* The credit, centred at the bottom of the phones' area */
+.credit {
+  position: fixed;
+  left: 50%;
+  bottom: 8px;
+  translate: -50% 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 4px 3px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg) 80%, transparent);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: .02em;
+}
+.credit .dot { margin: 0 -2px; opacity: .7; }
+.credit img { display: block; }
+.credit a { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; color: var(--muted); }
+.credit a:hover { color: var(--text); background: var(--chip); }
+.credit svg { width: 13px; height: 13px; fill: currentColor; }
+body.capture .credit { display: none; }
+
+/* A large, soft purple glow rising from the bottom of the phones' area */
+#panes::before {
+  content: '';
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 70vh;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(70% 100% at 50% 100%, rgba(124, 92, 240, .16), rgba(182, 95, 216, .06) 45%, transparent 75%);
+}
+body.capture #panes::before { display: none; }
