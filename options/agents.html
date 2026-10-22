@@ -93,21 +93,22 @@
       <label class="field">
         <span class="label">Page</span>
         <input type="url" id="url" placeholder="http://localhost:3000" spellcheck="false">
-        <span class="hint">A dev server on localhost works, as does any live site.</span>
       </label>
       <label class="field">
         <span class="label">Device</span>
         <select id="device"></select>
       </label>
     </div>
+    <p class="hint">A dev server on localhost works, as does any live site.</p>
 
-    <div class="tabs" role="tablist" id="use-tabs">
-      <button role="tab" class="tab on" data-use="agent">Ask your agent</button>
-      <button role="tab" class="tab" data-use="cli">Use the command line</button>
+    <div class="segmented" role="tablist" id="use-tabs">
+      <button role="tab" class="tab on" data-use="agent" type="button">Ask your agent</button>
+      <button role="tab" class="tab" data-use="cli" type="button">Use the command line</button>
     </div>
 
     <div id="use-agent">
       <div class="chips" id="prompt-kinds">
+        <span class="label">Prompt</span>
         <button class="chip on" data-kind="check" type="button">Check the mobile layout</button>
         <button class="chip" data-kind="compare" type="button">iPhone and Android</button>
         <button class="chip" data-kind="dark" type="button">Dark mode</button>
@@ -117,10 +118,11 @@
     </div>
 
     <div id="use-cli" hidden>
-      <p>For scripts, CI, or agents without MCP. Nothing to install first; each command prints the PNG's path.</p>
+      <p class="hint">For scripts, CI, or agents without MCP. Nothing to install first; each command prints the PNG's path.</p>
       <div class="code"><pre id="cli"></pre><button class="btn copy" data-copy="cli" type="button">Copy</button></div>
     </div>
 
+    <h3>The tools</h3>
     <dl class="tools">
       <dt><code>mirrorly_open</code></dt>
       <dd>Loads a page in a phone: device, browser (Safari, Chrome, Firefox), light or dark, landscape. Again to reload.</dd>
@@ -128,8 +130,10 @@
       <dd>To the top or bottom, a position, by an amount, or to a CSS selector.</dd>
       <dt><code>mirrorly_screenshot</code></dt>
       <dd>The phone with its browser bars, just the page in view, or the whole page. Returned as an image and saved as a PNG.</dd>
-      <dt><code>mirrorly_devices</code> · <code>mirrorly_status</code></dt>
-      <dd>The devices on offer; where pages open and what's open.</dd>
+      <dt><code>mirrorly_devices</code></dt>
+      <dd>The devices on offer, and the browsers each can be shown in.</dd>
+      <dt><code>mirrorly_status</code></dt>
+      <dd>Whether pages open in this Firefox or headless, and what's open.</dd>
     </dl>
     <p class="muted">Pages you're signed in to work too: sign in here in Firefox and keep the switch on.</p>
   </section>
