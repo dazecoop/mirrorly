@@ -706,6 +706,8 @@ class Pane {
   layout() {
     if (!this.frame && !this.blocked) {
       this.sizeLabel.textContent = '';
+      this.box = null;
+      dots?.refresh();
       return;
     }
     const d = this.device();
@@ -721,6 +723,8 @@ class Pane {
       Object.assign(this.viewport.style, { top: '0px', width: `${sw}px`, height: `${sh}px`, background: this.pageColor || '' });
       if (this.frame) Object.assign(this.frame.style, { width: `${sw}px`, height: `${sh}px`, transform: '', background: this.pageColor || '' });
       this.phone.classList.remove('bezel', 'flat');
+      this.box = { x: 0, y: 0, width: sw, height: sh };
+      dots?.refresh();
       this.renderOverlay();
       this.sizeLabel.textContent = `${sw}×${sh}`;
       return;
@@ -746,6 +750,8 @@ class Pane {
       transform: `scale(${scale})`,
       borderRadius: framed ? `${b.radius}px` : '',
     });
+    this.box = { x: parseFloat(this.phone.style.left), y: parseFloat(this.phone.style.top), width: outerW * scale, height: outerH * scale };
+    dots?.refresh();
     Object.assign(this.screen.style, {
       left: `${b.left}px`,
       top: `${b.top}px`,
@@ -763,10 +769,18 @@ class Pane {
     // out to fit the screen.
     const pageWidth = this.layoutWidth && this.layoutWidth !== g.width ? this.layoutWidth : g.width;
     const zoom = g.width / pageWidth;
+    // At a fractional scale Firefox can draw the page up to a screen pixel
+    // short of its box, showing a sliver of the page colour along the right
+    // and bottom. It's drawn a screen pixel over, clipped by the viewport.
+    // (Screenshots are at whole scales, and keep the page exact.)
+    const px = scale * devicePixelRatio;
+    const bleed = Math.abs(px - Math.round(px)) > 0.001 ? 1 / px : 0;
+    const sx = (zoom * (g.width + bleed)) / g.width;
+    const sy = (zoom * (g.height + bleed)) / g.height;
     if (this.frame) Object.assign(this.frame.style, {
       width: `${pageWidth}px`,
       height: `${g.height / zoom}px`,
-      transform: zoom !== 1 ? `scale(${zoom})` : '',
+      transform: sx !== 1 || sy !== 1 ? `scale(${sx}, ${sy})` : '',
       background: this.pageColor || '',
     });
 
@@ -904,6 +918,16 @@ function layoutAll() {
   arrangePanes();
   for (const pane of panes) pane.layout();
 }
+
+// The dots behind the row thin out behind each phone. (Offsets, not drawn
+// boxes, so a phone mid-animation counts where it's going.) Not in a capture
+// or agent tab: nobody sees the stage there.
+const dots = offscreen ? null : MirrorlyDots.attach(panesEl, () =>
+  panes.filter((pane) => pane.box && !pane.el.hidden).map((pane) => ({
+    ...pane.box,
+    x: pane.box.x + pane.stage.offsetLeft - panesEl.scrollLeft,
+    y: pane.box.y + pane.stage.offsetTop,
+  })));
 
 // Each stage is watched (Pane), but once the row scrolls the panes have
 // fixed widths and the stages no longer change with the sidebar; the row
@@ -1074,6 +1098,8 @@ function shutter(pane) {
   const st = pane.stage.getBoundingClientRect();
   pane.stage.style.transformOrigin = `${c.x - st.left}px ${c.y - st.top}px`;
   pane.stage.animate([{ scale: '1' }, { scale: '0.97', offset: 0.35 }, { scale: '1' }], { duration: 220, easing: EASE_OUT });
+  // The Screenshot button presses in with it.
+  pane.el.querySelector('.shoot').animate([{ scale: '1' }, { scale: '0.92', offset: 0.35 }, { scale: '1' }], { duration: 220, easing: EASE_OUT });
 
   const r = pane.phone.getBoundingClientRect();
   const n = notice.getBoundingClientRect();
@@ -1157,7 +1183,8 @@ function spinPhone(pane, was) {
 }
 
 // A ripple through the row from `origin`, Siri-style: a wave spreads out
-// and each phone gives a quick squash-and-stretch as the wave reaches it,
+// and each phone, and each pane's controls, give a quick squash-and-stretch
+// as the wave reaches them,
 // leaning away from where it started, while a faint iridescent rim rides the
 // wave's front. Only transforms and opacity are animated (the compositor
 // runs them, at the display's full rate); a per-pixel bend would be
@@ -1194,33 +1221,45 @@ function glassRipple(origin) {
   Object.assign(rim.style, { left: `${ox - RIM / 2}px`, top: `${oy - RIM / 2}px`, width: `${RIM}px`, height: `${RIM}px` });
   rim.animate([{ transform: `scale(${grow * 0.04})`, opacity: 1 }, { transform: `scale(${grow})`, opacity: 0 }], { duration: RIPPLE_MS, easing: EASE_OUT });
 
-  // Each phone, as the wave passes it. The wave's front moves like the rim
-  // (ease-out over its reach), so a phone's moment is where that curve
-  // crosses its distance.
-  for (const pane of panes) {
-    if (pane.el.hidden || pane.phone.hidden) continue;
-    const c = centreOf(pane.phone);
+  // Each phone and control, as the wave passes it. The wave's front moves
+  // like the rim (ease-out over its reach), so an element's moment is where
+  // that curve crosses its distance. `strength` scales the squash, `sway`
+  // the sideways lean, in px.
+  const wobble = (el, c, strength, sway) => {
     const dx = c.x - origin.x;
     const dy = c.y - origin.y;
     const dist = Math.hypot(dx, dy);
     const f = Math.min(1, dist / reach);
     const delay = RIPPLE_MS * (1 - Math.cbrt(1 - f)); // inverse of the ease-out cubic
     // Stronger near the origin, fading with distance; leans along the wave.
-    const k = 0.035 * (1 - 0.5 * f);
+    const k = strength * (1 - 0.5 * f);
     const lean = dist > 1 ? Math.max(-1, Math.min(1, dx / dist)) : 0;
-    // On the phone's stage, pivoting on the phone's centre (the phone itself
-    // is scaled from its top left).
-    const st = pane.stage.getBoundingClientRect();
-    pane.stage.style.transformOrigin = `${c.x - st.left}px ${c.y - st.top}px`;
-    pane.stage.animate(
+    el.animate(
       [
         { scale: '1 1', rotate: '0deg', translate: '0 0' },
-        { scale: `${1 + k} ${1 - k}`, rotate: `${lean * 0.6}deg`, translate: `${lean * 6}px 0`, offset: 0.3 },
-        { scale: `${1 - k * 0.5} ${1 + k * 0.5}`, rotate: `${-lean * 0.3}deg`, translate: `${-lean * 3}px 0`, offset: 0.65 },
+        { scale: `${1 + k} ${1 - k}`, rotate: `${lean * 0.6}deg`, translate: `${lean * sway}px 0`, offset: 0.3 },
+        { scale: `${1 - k * 0.5} ${1 + k * 0.5}`, rotate: `${-lean * 0.3}deg`, translate: `${-lean * sway * 0.5}px 0`, offset: 0.65 },
         { scale: '1 1', rotate: '0deg', translate: '0 0' },
       ],
       { duration: WOBBLE_MS, delay, easing: 'ease-in-out' },
     );
+  };
+  for (const pane of panes) {
+    if (pane.el.hidden) continue;
+    // The box jiggles as one, and each control in it a little more, a beat
+    // apart as the wave crosses them (each about its own centre).
+    const box = pane.el.querySelector('.pane-box');
+    wobble(box, centreOf(box), 0.02, 3);
+    for (const control of box.querySelectorAll('.device, .frame, .pane-actions > button, .custom, .size')) {
+      if (control.offsetParent) wobble(control, centreOf(control), 0.05, 2);
+    }
+    if (pane.phone.hidden) continue;
+    // On the phone's stage, pivoting on the phone's centre (the phone itself
+    // is scaled from its top left).
+    const c = centreOf(pane.phone);
+    const st = pane.stage.getBoundingClientRect();
+    pane.stage.style.transformOrigin = `${c.x - st.left}px ${c.y - st.top}px`;
+    wobble(pane.stage, c, 0.035, 6);
   }
 }
 

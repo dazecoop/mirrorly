@@ -8,7 +8,6 @@
   --track: #c9c9d3;
   --accent: #5b5bd6;
   --accent-text: #ffffff;
-  --grid: rgba(29, 29, 36, .05);
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
@@ -22,7 +21,6 @@
     --track: #4a4a56;
     --accent: #7c7cf0;
     --accent-text: #101014;
-    --grid: rgba(236, 236, 241, .04);
     color-scheme: dark;
   }
 }
@@ -321,22 +319,18 @@ button:hover, select:hover { border-color: var(--muted); }
   text-overflow: ellipsis;
 }
 .size:empty { display: none; }
-/* Faint grid behind the phones, like the store slides. Centred so the lines
-   sit evenly around a phone at any sidebar width. */
 .stage {
   position: relative;
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  background:
-    linear-gradient(var(--grid) 1px, transparent 1px) center / 24px 24px,
-    linear-gradient(90deg, var(--grid) 1px, transparent 1px) center / 24px 24px;
 }
+/* The moving dot matrix behind the phones (dots.js), under the whole row */
+.dots { position: fixed; z-index: -1; pointer-events: none; }
 
 /* Capture mode: one full-size phone and nothing else. */
 body.capture { background: #1c1c1f; }
 body.capture .bar, body.capture .pane-box { display: none; }
-body.capture .stage { background: none; }
 body.capture #panes { position: absolute; top: 0; left: 0; width: 1400px; height: 1400px; padding: 0; }
 body.capture .phone.bezel { box-shadow: 0 0 0 1.5px #5a5a60, 0 0 0 4px #1c1c1f; }
 /* A screenshot without the frame: just the page, with no browser bars over it. */
