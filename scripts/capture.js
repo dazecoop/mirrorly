@@ -43,6 +43,8 @@ const DEMO_SITES = {
   'themeridian.news': 'meridian',
   'kilncoffee.co.uk': 'kiln',
   'app.pulsehq.io': 'pulse',
+  // The AI agents slide shows a dev server.
+  localhost: 'kiln',
 };
 const SITES = {
   driftwood: `http://driftwood.travel:${PORT}/`,
@@ -85,7 +87,7 @@ async function launch() {
     .setPreference('ui.systemUsesDarkTheme', 1)
     .setPreference('layout.css.prefers-color-scheme.content-override', 0)
     // The demo sites' domains point at the local server, over plain http.
-    .setPreference('network.dns.localDomains', Object.keys(DEMO_SITES).join(','))
+    .setPreference('network.dns.localDomains', Object.keys(DEMO_SITES).filter((h) => h !== 'localhost').join(','))
     .setPreference('dom.security.https_first', false)
     .setPreference('dom.security.https_only_mode', false);
   // System access lets the driver open the extension's own (moz-extension:) page.
@@ -341,6 +343,20 @@ const SHOTS = {
       await rig.configure({ devices: [device], appearance });
       await rig.open(SITES[site]);
       await rig.savePhone(name);
+    }
+  },
+
+  // What an AI agent gets back from Mirrorly: made with the agent tools
+  // themselves (agent/phone.js, in their own headless Firefox).
+  async 'agent-shot'() {
+    const { Phone } = require('../agent/phone');
+    const phone = new Phone();
+    try {
+      await phone.open({ url: `http://localhost:${PORT}/`, device: 'iphone-se', browser: 'safari', via: 'headless' });
+      await phone.screenshot({ mode: 'frame', resolution: 'device', savePath: path.join(OUT, 'agent-kiln-se.png') });
+      console.log('wrote scripts/output/agent-kiln-se.png');
+    } finally {
+      await phone.close();
     }
   },
 

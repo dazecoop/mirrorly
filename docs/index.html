@@ -25,6 +25,7 @@
   </a>
   <nav>
     <a href="./" aria-current="page">Overview</a>
+    <a href="agents.html">AI agents</a>
     <a href="support.html">Support</a>
     <a href="privacy.html">Privacy</a>
   </nav>
@@ -52,6 +53,7 @@ wants to see the mobile layout without reaching for a real phone every time.</p>
   <li>Localhost too</li>
   <li>Signed-in pages too</li>
   <li>Up to ten devices</li>
+  <li>AI agents (MCP)</li>
   <li>No account needed</li>
   <li>No tracking</li>
   <li>MIT licensed</li>
@@ -138,6 +140,20 @@ for an iPhone 17 Pro screen), ready for a bug report or a design review: with
 the frame on a transparent background, just the page as it's shown, or the whole
 page from top to bottom.</p>
 
+<h2>Let AI agents use it</h2>
+<p>Coding agents build pages they never see on a phone. Mirrorly's MCP server gives
+them one: Claude Code, Cursor and other agents open your page (a dev server on
+<code>localhost</code> works) on an iPhone or Android, scroll, take screenshots and read
+them, then fix what looks wrong and check again. One command sets it up, and it all runs
+on your computer.</p>
+
+<img class="hero" src="preview-agents.png" width="1600" height="800" loading="lazy"
+     alt="An agent session: the agent opens localhost on an iPhone SE with Mirrorly, gets back a phone screenshot, notices Safari's toolbar covers the hero's buttons, fixes the CSS and checks again.">
+<p class="caption">An agent finds buttons hidden under Safari's toolbar on an iPhone SE, fixes them, and checks again.</p>
+<pre><code>npx -y github:dazecoop/mirrorly install</code></pre>
+<p><a href="agents.html">Setting it up and using it</a> covers the tools, example prompts and
+the command line.</p>
+
 <h2>Privacy</h2>
 <p>Mirrorly has no account, no analytics, no tracking and no server. Your
 settings are stored by Firefox on your computer. The only network requests it
@@ -153,6 +169,7 @@ page</a>. Mirrorly is MIT licensed and the full source is on
 
 <footer>
   <a href="https://addons.mozilla.org/firefox/addon/mirrorly/">Firefox Add-ons</a> ·
+  <a href="agents.html">AI agents</a> ·
   <a href="support.html">Support</a> ·
   <a href="privacy.html">Privacy policy</a> ·
   <a href="https://github.com/dazecoop/mirrorly">source on GitHub</a> ·

@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI agents — Mirrorly</title>
+<meta name="description" content="Give Claude Code, Cursor and other AI agents a real phone: Mirrorly's MCP server opens your page (localhost included) on an iPhone or Android, scrolls and takes screenshots, so your agent can see and fix the mobile layout.">
+<link rel="icon" href="icon32.png" type="image/png">
+<link rel="canonical" href="https://dazecoop.github.io/mirrorly/agents.html">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Mirrorly for AI agents — a real phone for your coding agent">
+<meta property="og:description" content="Mirrorly's MCP server lets Claude Code, Cursor and other agents open your page on a phone, scroll and take screenshots. Local and free.">
+<meta property="og:url" content="https://dazecoop.github.io/mirrorly/agents.html">
+<meta property="og:image" content="https://dazecoop.github.io/mirrorly/preview-agents.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <a class="brand" href="./">
+    <img src="icon32.png" alt="" width="32" height="32">
+    <span>Mirrorly</span>
+  </a>
+  <nav>
+    <a href="./">Overview</a>
+    <a href="agents.html" aria-current="page">AI agents</a>
+    <a href="support.html">Support</a>
+    <a href="privacy.html">Privacy</a>
+  </nav>
+</header>
+
+<main>
+<h1>A real phone for your AI agent</h1>
+
+<p class="lede">Coding agents build pages they never see on a phone. Mirrorly's MCP
+server gives them one: Claude Code, Cursor and other agents open your page on an
+iPhone or Android, scroll, take screenshots and read them, then fix what looks
+wrong and check again.</p>
+
+<img class="hero" src="preview-agents.png" width="1600" height="800"
+     alt="An agent session: the agent opens localhost on an iPhone SE with Mirrorly, gets back a phone screenshot, notices Safari's toolbar covers the hero's buttons, fixes the CSS and checks again.">
+<p class="caption">An agent checks a local dev server on an iPhone SE, finds the buttons under Safari's toolbar, and fixes them.</p>
+
+<h2>Why it helps</h2>
+<ul>
+  <li><strong>Agents see what they built.</strong> A screenshot from a real phone size, with
+    Safari's or Chrome's bars, shows overflow, cramped text, tiny tap targets and content
+    hidden under the toolbar, which reading the code doesn't.</li>
+  <li><strong>The loop closes on its own.</strong> Look, fix, reload, look again, without you
+    resizing windows or reaching for your phone after every change.</li>
+  <li><strong>Several devices in one go.</strong> An iPhone SE and a Pixel, light and dark,
+    portrait and landscape, from the same devices as the sidebar.</li>
+  <li><strong>Your dev server and your logins.</strong> <code>localhost</code> works. With the
+    switch on in Firefox, pages you're signed in to work too.</li>
+  <li><strong>Local and free.</strong> No account, nothing uploaded; the screenshots stay on
+    your computer.</li>
+</ul>
+
+<h2>Set up</h2>
+<p>It needs <a href="https://nodejs.org">Node.js</a> 18 or later. Run one command in a
+terminal:</p>
+<pre><code>npx -y github:dazecoop/mirrorly install</code></pre>
+<p>It adds Mirrorly's MCP server to every agent app it finds (Claude Code, Claude Desktop
+and Cursor), installs a Mirrorly skill for Claude Code so it knows when to use it, then
+starts the server the way each app will and checks it answers with its tools. Config files
+are backed up first. Restart the apps afterwards; fully quit Claude Desktop.</p>
+<table>
+  <tr><th>To</th><th>Run</th></tr>
+  <tr><td>Add it to one app</td><td><code>npx -y github:dazecoop/mirrorly install claude-code</code> (or <code>claude-desktop</code>, <code>cursor</code>)</td></tr>
+  <tr><td>Add it to a VS Code project</td><td><code>npx -y github:dazecoop/mirrorly install vscode</code>, in the project's folder</td></tr>
+  <tr><td>See which apps have it</td><td><code>npx -y github:dazecoop/mirrorly status</code></td></tr>
+  <tr><td>Remove it (and the skill)</td><td><code>npx -y github:dazecoop/mirrorly uninstall</code></td></tr>
+</table>
+
+<h3>Use your own Firefox</h3>
+<p>In Mirrorly's settings (click the line at the top of the sidebar), find <strong>AI
+agents</strong> and open its page. Turn on <strong>Let AI agents use Mirrorly</strong>.
+The agent's phones then open in your Firefox, each in a background tab, so your sidebar
+and tabs are left alone and pages you're signed in to work. The page shows whether an
+agent is connected, and has the setup steps, a test prompt and example prompts.</p>
+<p>With the switch off, agents can still use Mirrorly: it starts a separate headless
+Firefox for them, without your logins.</p>
+
+<h2>Test it</h2>
+<p>In a new agent session, paste:</p>
+<pre class="prompt"><code>Find the Mirrorly MCP server's mirrorly_status tool. Its name may have a prefix, like mcp__mirrorly__mirrorly_status, and if your tools load on demand, search your tools for "mirrorly" first. Call it and reply with exactly what it returns. Only if no Mirrorly tool exists after searching, reply with: MIRRORLY NOT INSTALLED</code></pre>
+<p>A reply starting <em>Mirrorly MCP is working</em> means it's set up. It goes on to say
+whether pages open in your Firefox or in headless Firefox.</p>
+
+<h2>Ask your agent</h2>
+<pre class="prompt"><code>Use Mirrorly to open http://localhost:3000 on an iPhone SE, take a full-page screenshot, and tell me anything that looks broken or awkward on mobile.</code></pre>
+<pre class="prompt"><code>Use Mirrorly to open http://localhost:3000 on an iPhone 17 and on a Pixel 10. Compare full-page screenshots of each, and fix what looks wrong on either.</code></pre>
+<pre class="prompt"><code>Use Mirrorly to check the checkout page in dark mode on an iPhone, then fix anything hard to read and check again.</code></pre>
+
+<h2>The tools</h2>
+<table>
+  <tr><th>Tool</th><th>What it does</th></tr>
+  <tr><td><code>mirrorly_open</code></td><td>Loads a URL in a phone: <code>device</code>, <code>browser</code> (<code>safari</code>, <code>chrome</code>, <code>firefox</code>, <code>none</code>), <code>appearance</code> (<code>light</code> or <code>dark</code>), <code>landscape</code>. Again to reload after a change.</td></tr>
+  <tr><td><code>mirrorly_scroll</code></td><td>One of <code>position</code> (<code>top</code> or <code>bottom</code>), <code>y</code>, <code>by</code>, or <code>selector</code> (CSS).</td></tr>
+  <tr><td><code>mirrorly_screenshot</code></td><td><code>mode</code>: <code>frame</code> (the phone with its bars), <code>screen</code> (just the page in view) or <code>full</code> (the whole page). Returned to the agent as an image, and saved as a PNG whose path is in the reply.</td></tr>
+  <tr><td><code>mirrorly_devices</code></td><td>The devices on offer, and the browsers each can be drawn in.</td></tr>
+  <tr><td><code>mirrorly_status</code></td><td>Whether pages open in your Firefox or headless, and what's open.</td></tr>
+</table>
+
+<h2>From a terminal</h2>
+<p>The same phone for scripts, CI, or agents without MCP. Each command prints the PNG's
+path.</p>
+<pre><code>npx -y github:dazecoop/mirrorly screenshot http://localhost:3000 --device iphone-se --mode full --out mobile.png
+npx -y github:dazecoop/mirrorly screenshot https://example.com --device pixel --browser chrome --appearance dark
+npx -y github:dazecoop/mirrorly devices</code></pre>
+
+<h2>How it works, and privacy</h2>
+<p>The MCP server is a small Node program your agent app starts. With the switch on, the
+extension connects to it at <code>ws://127.0.0.1:47616</code>, on your own computer, and
+only while an agent app is running it. It accepts only the extension and local programs,
+so websites can't talk to it. Each agent session gets a phone in a background tab, which
+closes after 10 idle minutes; the switch, and a button on the AI agents page, close them
+straight away.</p>
+<p>Without the switch, the server starts a headless Firefox with Mirrorly in it, for that
+session only. Nothing is sent anywhere but the pages the agent asks to open, and the
+screenshots stay on your computer. See the <a href="privacy.html">privacy policy</a>.</p>
+
+<h2>Troubleshooting</h2>
+<ul>
+  <li><strong>"MIRRORLY NOT INSTALLED":</strong> run <code>npx -y github:dazecoop/mirrorly status</code>.
+    It lists each app, whether Mirrorly is installed there, and whether it starts. Then fully
+    restart the app.</li>
+  <li><strong>The AI agents page says "waiting for an agent":</strong> that's normal when no
+    agent app is running Mirrorly. It connects within a few seconds of one starting.</li>
+  <li><strong>Pages open headless though the switch is on:</strong> check the port under
+    Options on the AI agents page matches <code>MIRRORLY_PORT</code> in your agent's config, if
+    you set one.</li>
+  <li><strong>Headless Firefox won't start:</strong> install Firefox, or set
+    <code>MIRRORLY_FIREFOX</code> to its binary.</li>
+</ul>
+</main>
+
+<footer>
+  <a href="https://addons.mozilla.org/firefox/addon/mirrorly/">Firefox Add-ons</a> ·
+  <a href="agents.html">AI agents</a> ·
+  <a href="support.html">Support</a> ·
+  <a href="privacy.html">Privacy policy</a> ·
+  <a href="https://github.com/dazecoop/mirrorly">source on GitHub</a> ·
+  MIT licensed
+</footer>
+
+</div>
+</body>
+</html>

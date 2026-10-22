@@ -18,6 +18,8 @@
     browser - a drawn, dark Firefox window with the Mirrorly sidebar open
               beside the desktop page, scaled and free to run off the slide.
     panel   - the Mirrorly sidebar on its own, as Firefox draws it.
+    agent   - an AI agent's session using Mirrorly's tools: messages, tool
+              calls and the phone screenshot it got back (shots[0]).
 
   Callout cards sit across the edge of a window or panel rather than on top
   of it, with the connector running in to the part they name.
@@ -159,6 +161,38 @@
   .ff.panel .sidebar { border-right: 0; }
   .sidebar .shot, .ffpage .shot { position: relative; }
   .ffpage { flex: 1; overflow: hidden; position: relative; }
+
+  /* ---- Agent layout: an agent session using Mirrorly's tools ----------- */
+  .agent-win {
+    position: absolute; border-radius: 14px; overflow: hidden; background: #101122;
+    border: 1px solid rgba(170,180,255,0.35);
+    box-shadow: 0 0 50px rgba(100,95,240,0.40), 0 0 120px rgba(182,95,216,0.20), 0 40px 90px rgba(0,0,0,0.55);
+    font-size: 14.5px; line-height: 1.45; color: #d9dbea;
+  }
+  .agent-bar { display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 14px; background: #181a33; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 12.5px; color: #8f94b8; }
+  .agent-bar i { width: 10px; height: 10px; border-radius: 50%; display: block; }
+  .agent-bar span { margin-left: 8px; }
+  .agent-body { padding: 18px 20px; display: grid; gap: 12px; }
+  .msg-user { justify-self: end; max-width: 78%; padding: 10px 14px; border-radius: 14px 14px 4px 14px; background: linear-gradient(90deg, #4e55d8, #8a52c4); color: #fff; font-weight: 500; }
+  .tool { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 10px; background: rgba(255,255,255,0.035); border: 1px solid rgba(255,255,255,0.07); font: 12.5px/1.4 ui-monospace, 'SF Mono', Menlo, monospace; }
+  .tool b { color: #b8bfff; font-weight: 600; }
+  .tool .args { color: #8f94b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tool .ok { color: #4fc98a; font-family: -apple-system, sans-serif; font-weight: 700; }
+  .result { display: grid; grid-template-columns: 1fr auto; gap: 18px; align-items: start; }
+  .result .shot { position: relative; }
+  .msg-agent p { margin: 0 0 10px; }
+  .msg-agent .tool { margin-top: 16px; }
+  .shot-mark { position: absolute; left: 6%; right: 6%; border: 2px solid #ff7a6b; border-radius: 10px; box-shadow: 0 0 0 3px rgba(255,122,107,0.25), 0 0 18px rgba(255,122,107,0.5); }
+  .msg-agent strong { color: #fff; }
+  .msg-agent code { font: 12.5px ui-monospace, 'SF Mono', Menlo, monospace; color: #e4a6f3; }
+  .agent-status {
+    position: absolute; z-index: 4; display: flex; align-items: center; gap: 11px; padding: 10px 16px 10px 12px; border-radius: 13px;
+    background: rgba(19,20,46,0.96); border: 1px solid rgba(170,175,255,0.38); box-shadow: 0 0 24px rgba(100,95,240,0.25), 0 14px 30px rgba(0,0,0,0.4);
+  }
+  .agent-status img { width: 30px; height: 30px; }
+  .agent-status .t { font-size: 14px; font-weight: 700; color: #f0f1ff; }
+  .agent-status .s { font-size: 13px; color: #a6a9bd; display: flex; align-items: center; gap: 7px; }
+  .agent-status .s i { width: 8px; height: 8px; border-radius: 50%; background: #3ccf7f; box-shadow: 0 0 0 3px rgba(60,207,127,0.2); display: block; }
 
   /* ---- Social / docs previews: 1280x640, no second paragraph ----------- */
   html.social, body.social { height: 640px; }
@@ -387,12 +421,52 @@
     await imagesLoaded();
   }
 
+  // An agent session at A {x, y, w}: the user's ask, tool calls, and the
+  // screenshot it got back (shots[0], A.shotW wide) beside its reply.
+  async function renderAgent(s, opts) {
+    const A = s.agent;
+    const win = document.createElement('div');
+    win.className = 'agent-win';
+    Object.assign(win.style, { left: A.x + 'px', top: A.y + 'px', width: A.w + 'px' });
+    const tool = (t) => `<div class="tool"><b>${esc(t.name)}</b><span class="args">${esc(t.args)}</span><span class="ok">✓</span></div>`;
+    win.innerHTML = `
+      <div class="agent-bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span>${esc(A.title)}</span></div>
+      <div class="agent-body">
+        <div class="msg-user">${esc(A.ask)}</div>
+        ${A.before.map(tool).join('')}
+        <div class="result"><div class="msg-agent">${A.reply}${A.after.map(tool).join('')}</div><div class="shot-slot"></div></div>
+      </div>`;
+    document.getElementById('stage').appendChild(win);
+    const shot = makeShot({ x: 0, y: 0, w: A.shotW, glow: false }, opts.images[0], null);
+    shot.style.position = 'relative';
+    shot.querySelector('.clip').style.borderRadius = '0';
+    win.querySelector('.shot-slot').appendChild(shot);
+    if (A.mark) {
+      const ring = document.createElement('i');
+      ring.className = 'shot-mark';
+      Object.assign(ring.style, { top: A.mark.fy0 * 100 + '%', height: (A.mark.fy1 - A.mark.fy0) * 100 + '%' });
+      shot.querySelector('.clip').appendChild(ring);
+    }
+    if (A.status) {
+      const st = document.createElement('div');
+      st.className = 'agent-status';
+      st.innerHTML = `<img src="${opts.logo}"><span><div class="t">${esc(A.status.title)}</div><div class="s"><i></i>${esc(A.status.sub)}</div></span>`;
+      Object.assign(st.style, { left: A.status.x + 'px', top: A.status.y + 'px' });
+      document.body.appendChild(st);
+    }
+    const markers = {};
+    for (const c of s.callouts || []) markers[c.id] = addMarker(shot, null, c.target);
+    await imagesLoaded();
+    drawCallouts(s, markers);
+  }
+
   window.render = async function (s, opts) {
     document.documentElement.className = opts.social ? 'social' : '';
     document.body.className = [opts.social ? 'social' : '', s.hideFeatures ? 'no-features' : ''].join(' ');
     renderCopy(s, opts);
     if (s.layout === 'browser') await renderBrowser(s, opts);
     else if (s.layout === 'lineup') await renderLineup(s, opts);
+    else if (s.layout === 'agent') await renderAgent(s, opts);
     else await renderPhones(s, opts);
     drawTags(s);
   };

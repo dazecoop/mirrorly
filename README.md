@@ -36,14 +36,18 @@ rectangle at a phone's width. Mirrorly does more:
 
 - **Everything in sync.** Scrolling lines up on the same content rather than
   the same percentage, so the phone shows the part of the page you're looking
-  at, and carousels and scrollable panels follow too. Taps on buttons, menus
-  and toggles are mirrored, text typed into a form
-  appears in every view, and links, back/forward, reloads and tab switches carry
-  across. It works in both directions, and each part can be turned off.
+  at. Carousels (Embla, Swiper, Splide and others) bring the same slide to the
+  front, scrollable panels follow, and swipes on things like photo viewers are
+  replayed. Taps on buttons, menus and toggles are mirrored, text typed into a
+  form appears in every view, and links, back/forward, reloads and tab switches
+  carry across. It works in both directions, and each part can be turned off.
 - **Up to ten devices at once.** **+ Device** adds another phone beside the
   others, say an iPhone next to a Pixel. They all follow the desktop tab, and
   each other. They're drawn at the same scale, so their sizes compare
   honestly, and when they don't all fit the row scrolls sideways.
+- **AI agents can use it.** Claude Code, Cursor and other MCP apps can open a
+  page in a phone, scroll it and take screenshots, through Mirrorly's MCP
+  server. See [AI agents](#ai-agents-mcp-server-and-cli) below.
 - **Show in Mirrorly.** Right-click anything on the page and choose **Show in
   Mirrorly**: the sidebar opens if it's closed, and each phone scrolls to its
   copy and outlines it. If it's left out of the mobile layout, you're told.
@@ -82,6 +86,86 @@ rectangle at a phone's width. Mirrorly does more:
 
 <img alt="A news site in the Mirrorly sidebar in an iPhone 17 Pro and a Pixel 10, side by side, beside the desktop page, with callouts for taps, pages and scrolling" src="docs/preview-sync.png" />
 
+## AI agents: MCP server and CLI
+
+Coding agents build web pages they can't see, and they rarely look at the
+mobile layout. Mirrorly gives them a phone: an agent opens your page (a
+dev server on `localhost` is fine) on an iPhone or Android, scrolls, takes a
+screenshot, and reads it. It can then fix what it finds, overflow, text that
+wraps badly, buttons under Safari's toolbar, broken dark mode, and look again
+to check.
+
+<img alt="An agent session: the agent opens localhost on an iPhone SE with Mirrorly, gets back a phone screenshot, notices Safari's toolbar covers the hero's buttons, fixes the CSS and checks again" src="docs/preview-agents.png" />
+
+Everything runs on your computer. There's no account and nothing is uploaded.
+
+### Set up
+
+It needs [Node.js](https://nodejs.org) 18 or later. In a terminal:
+
+```sh
+npx -y github:dazecoop/mirrorly install
+```
+
+That adds Mirrorly's MCP server to every agent app it finds (Claude Code,
+Claude Desktop, Cursor), installs a Mirrorly skill for Claude Code so it knows
+when to reach for it, then starts the server the way each app will and checks
+it answers. Name one app to add it there only:
+
+```sh
+npx -y github:dazecoop/mirrorly install claude-code      # or claude-desktop, cursor
+npx -y github:dazecoop/mirrorly install vscode           # in a project folder: .vscode/mcp.json
+npx -y github:dazecoop/mirrorly status                   # which apps have it, and does it start
+npx -y github:dazecoop/mirrorly uninstall                # remove it (and the skill) again
+```
+
+Restart the apps afterwards (fully quit Claude Desktop). Config files are backed
+up first, as `<file>.mirrorly-backup`.
+
+Then, to run the agent's phones in your own Firefox, so pages you're signed in
+to work, open Mirrorly's settings (the line at the top of the sidebar), find
+**AI agents** and turn on **Let AI agents use Mirrorly**. That page also has
+setup instructions, a prompt to test it with, example prompts and the
+connection status. With it off, agents still work, in a separate headless
+Firefox.
+
+### Use it
+
+Ask your agent in plain words, for example:
+
+> Use Mirrorly to open http://localhost:3000 on an iPhone SE and a Pixel 10,
+> take full-page screenshots, and fix anything that looks broken on mobile.
+
+| Tool | What it does |
+| --- | --- |
+| `mirrorly_open` | Loads a URL in a phone: `device`, `browser` (`safari`, `chrome`, `firefox`, `none`), `appearance` (`light`/`dark`), `landscape`. Again to reload. |
+| `mirrorly_scroll` | One of `position` (`top`/`bottom`), `y`, `by` or `selector` (CSS). |
+| `mirrorly_screenshot` | `mode`: `frame` (the phone and its bars), `screen` (just the page in view) or `full` (the whole page). Returned as an image and saved as a PNG. |
+| `mirrorly_devices` | The devices on offer and the browsers each can be drawn in. |
+| `mirrorly_status` | Whether pages open in your Firefox or headless, and what's open. |
+
+### CLI
+
+The same phone from a terminal or a script, nothing to install first:
+
+```sh
+npx -y github:dazecoop/mirrorly screenshot http://localhost:3000 --device iphone-se --mode full --out mobile.png
+npx -y github:dazecoop/mirrorly screenshot https://example.com --device pixel --browser chrome --appearance dark
+npx -y github:dazecoop/mirrorly devices
+```
+
+### Your Firefox or headless
+
+With **Let AI agents use Mirrorly** on, the extension connects to
+`ws://127.0.0.1:47616`, where only Mirrorly's agent tool listens, while an agent
+app is running it. Each agent session gets its own phone in a background tab of
+your Firefox, so your sidebar and tabs are left alone, and it closes after 10
+idle minutes. Web pages can't connect to it: it only accepts the extension and
+local processes. Otherwise the tool starts a headless Firefox with Mirrorly in
+it for the session, which needs Firefox installed (or `MIRRORLY_FIREFOX` set to
+its binary). `MIRRORLY_PORT` changes the port; match it under Options on the AI
+agents page.
+
 ## How close is it to a real phone?
 
 Checked against iPhone 17 Pro screenshots of Wikipedia, text wraps line for
@@ -115,6 +199,8 @@ npm run lint             # web-ext lint
 npm run build            # dist/mirrorly-firefox-v<version>.zip, for AMO
 npm run icons            # icons/icon.svg -> the PNG sizes
 npm run store-assets     # capture + compose the store, social and docs images
+npm run test:agent       # the MCP server end to end, headless and through the extension
+node agent/cli.js install --local   # point your agent apps at this checkout
 ```
 
 `scripts/capture.js` runs the real extension in Firefox (headless, in dark
@@ -138,6 +224,13 @@ How it fits together:
 - `styles.js` rewrites the phone views' stylesheets: hover off, and Safari's
   safe-area insets. `touch.js` adds the fingertip, drag-to-scroll and touch
   events.
+- `background-agent.js` is the extension's side of the AI agents feature: the
+  connection to the MCP server and each agent's phone, which is the sidebar
+  page in agent mode in a background tab. `options/agents.html` is its
+  settings page.
+- `agent/` is the npm package: the MCP server (`mcp.js`, plain JSON-RPC over
+  stdio), the CLI, the bridge to the extension (`bridge.js`), the headless
+  Firefox fallback, the installer and the Claude Code skill.
 
 ## Limitations
 
@@ -154,7 +247,8 @@ How it fits together:
 
 Mirrorly has no account, no analytics, no tracking and no server. Settings are
 stored by Firefox on your computer. The only requests it causes are for the
-page you're already viewing; the [privacy policy](https://dazecoop.github.io/mirrorly/privacy.html)
+page you're already viewing (or, for AI agents, the pages they open), plus a
+connection to `127.0.0.1` when you let agents use it; the [privacy policy](https://dazecoop.github.io/mirrorly/privacy.html)
 explains each one and every permission.
 
 ## Licence

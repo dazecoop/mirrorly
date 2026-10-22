@@ -19,6 +19,7 @@
   </a>
   <nav>
     <a href="./">Overview</a>
+    <a href="agents.html">AI agents</a>
     <a href="support.html">Support</a>
     <a href="privacy.html" aria-current="page">Privacy</a>
   </nav>
@@ -35,8 +36,9 @@ is kept by Firefox, on your own computer.</p>
 <h2>What Mirrorly stores</h2>
 <p>In Firefox's local extension storage, on this computer only: your settings.
 That's which devices and browsers you chose, which kinds of syncing are on,
-touch, user agent and keyboard options, text size and appearance, and whether
-the settings panel is open. It doesn't store the pages you visit.</p>
+touch, user agent and keyboard options, text size and appearance, whether
+the settings panel is open, and the AI agents switch, its port and when an agent
+last connected. It doesn't store the pages you visit.</p>
 
 <h2>Network requests</h2>
 <p>Mirrorly has no server and sends nothing anywhere. The requests it causes are
@@ -48,6 +50,11 @@ all for the page you're already viewing:</p>
   <li><strong>Stylesheets, re-read.</strong> With Touch on (to switch off hover effects),
       or for sites that use iOS's text size or safe areas, Mirrorly re-reads the
       page's own stylesheets from the servers the page loaded them from.</li>
+  <li><strong>AI agents, if you allow them.</strong> With <strong>Let AI agents use
+      Mirrorly</strong> on (it's off until you turn it on), the extension connects to
+      <code>127.0.0.1</code>, your own computer, where only Mirrorly's agent tool
+      listens, and loads the pages an agent asks for in a background tab. The
+      screenshots it takes go to that tool on your computer, and nowhere else.</li>
 </ul>
 
 <h2>Permissions and why they're needed</h2>
@@ -81,6 +88,7 @@ and the change will be in the project's history on
 
 <footer>
   <a href="./">Overview</a> ·
+  <a href="agents.html">AI agents</a> ·
   <a href="support.html">Support</a> ·
   <a href="https://github.com/dazecoop/mirrorly">source on GitHub</a>
 </footer>

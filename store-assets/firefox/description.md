@@ -12,6 +12,8 @@ Why not Firefox's Responsive Design Mode? It turns your tab into a blank rectang
 
 - Up to ten devices: Put an iPhone next to a Pixel, and more, all following the desktop tab.
 
+- AI agents (MCP): Claude Code, Cursor and other AI agents can open your page in a phone, scroll, take screenshots and fix what looks wrong, through Mirrorly's MCP server. One command sets it up: npx -y github:dazecoop/mirrorly install. It all runs on your computer, and the switch is off until you turn it on.
+
 - Show in Mirrorly: Right-click anything on the page and each phone scrolls to it and outlines it.
 
 - Local and staging sites: Pages on localhost, your network or a staging server work like any other.
@@ -37,6 +39,7 @@ The page is drawn by Firefox's engine, so engine-specific CSS can differ from Sa
 Links:
 
 - Homepage: https://dazecoop.github.io/mirrorly/
+- AI agents guide: https://dazecoop.github.io/mirrorly/agents.html
 - Support: https://dazecoop.github.io/mirrorly/support.html
 - Privacy policy: https://dazecoop.github.io/mirrorly/privacy.html
 - Source: https://github.com/dazecoop/mirrorly
@@ -48,3 +51,4 @@ Screenshots captions (in upload order):
 3. Frames, browser bars and keyboards measured from real phones.
 4. iPhone, Pixel, Galaxy and more, drawn at the same scale, in Safari, Chrome or Firefox.
 5. Settings: choose what syncs, plus touch, keyboard, text size and appearance.
+6. AI agents: Claude Code, Cursor and other agents open your site in a phone through Mirrorly's MCP server, take screenshots and fix what they find.

@@ -119,6 +119,29 @@ const SLIDES = [
     more: 'Rotate any phone, and save screenshots at its real resolution: with the frame, just the page, or the whole page.',
     features: ['Private: nothing leaves Firefox', 'Free', 'Open source'],
   },
+  {
+    file: '06-ai-agents.png',
+    layout: 'agent',
+    shots: ['agent-kiln-se.png'],
+    agent: {
+      x: 520, y: 118, w: 710, shotW: 192,
+      title: 'Agent session · ~/sites/kiln',
+      ask: 'Check the homepage on a small iPhone and fix anything that looks off.',
+      before: [{ name: 'mirrorly_open', args: 'http://localhost:3000 · iPhone SE · Safari' }, { name: 'mirrorly_screenshot', args: 'mode: frame → 838×1686 PNG' }],
+      reply: '<p>On the <strong>iPhone SE</strong>, Safari\'s toolbar sits over both buttons in the hero, so neither can be tapped.</p>'
+        + '<p>Fixed in <code>hero.css</code>: the buttons now leave room for the toolbar and the safe area.</p>'
+        + '<p>Checked again on the iPhone SE and iPhone 17: both clear.</p>',
+      after: [{ name: 'mirrorly_screenshot', args: 'iPhone SE · after the fix' }],
+      // Where the screenshot shows the problem (fractions of its height).
+      mark: { fy0: 0.82, fy1: 0.9 },
+      status: { x: 960, y: 88, title: 'Mirrorly · AI agents', sub: 'Connected to Claude Code' },
+    },
+    eyebrow: 'AI AGENTS · MCP',
+    headline: ['Your AI agent,', 'on a real phone.'],
+    subcopy: 'Claude Code, Cursor and other agents open your site in a phone, scroll, take screenshots, and fix what looks wrong.',
+    more: 'One command to set up. Works on localhost, runs in your Firefox (signed in) or headless, and nothing leaves your computer.',
+    features: ['MCP server & CLI', 'Works on localhost', 'Free & local'],
+  },
 ];
 
 const CTA_TEXT = 'Add to Firefox — Free';
@@ -134,6 +157,7 @@ const SOCIAL = [
   },
   { from: '02-in-sync.png', out: { 'docs/preview-sync.png': 1.25 } },
   { from: '03-real-phones.png', out: { 'docs/preview-real-phones.png': 1.25 } },
+  { from: '06-ai-agents.png', out: { 'docs/preview-agents.png': 1.25 } },
   { from: '04-devices.png', lift: 96, hideFeatures: true, out: { 'docs/preview-devices.png': 1.25 } },
 ];
 const SOCIAL_CTA = 'Free & open source';
@@ -193,6 +217,7 @@ async function socialImages(browser, template) {
       shots: base.shots.map((s) => (typeof s === 'string' ? s : { ...s, y: lift(s.y) })),
       browser: base.browser && { ...base.browser, y: lift(base.browser.y) },
       lineup: base.lineup && { ...base.lineup, baseline: lift(base.lineup.baseline) },
+      agent: base.agent && { ...base.agent, y: lift(base.agent.y), status: base.agent.status && { ...base.agent.status, y: lift(base.agent.status.y) } },
       callouts: (base.callouts || []).map((c) => ({ ...c, y: lift(c.y) })),
       tags: (base.tags || []).map((t) => ({ ...t, y: lift(t.y) })),
     };
