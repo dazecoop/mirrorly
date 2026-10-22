@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const FILES = ['manifest.json', 'background.js', 'background-agent.js', 'content.js', 'shared.js', 'styles.js', 'touch.js', 'icons', 'sidebar'];
+const FILES = ['manifest.json', 'background.js', 'background-agent.js', 'content.js', 'shared.js', 'styles.js', 'touch.js', 'icons', 'sidebar', 'options'];
 
 const CRC_TABLE = Array.from({ length: 256 }, (_, n) => {
   let c = n;

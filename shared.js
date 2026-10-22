@@ -17,6 +17,7 @@ var Mirrorly = {
     // computer (agent/bridge.js) at ws://127.0.0.1:<agentPort>.
     agentBridge: false,
     agentPort: 47616,
+    agentSeenAt: 0, // when an agent's server last connected
   },
 
   MAX_DEVICES: 10,
@@ -134,4 +135,15 @@ var Mirrorly = {
   LANDSCAPE: { toolbar: 50, homeStrip: 21 },
 
   FRAME_PREFIX: 'mirrorly-phone',
+
+  // An agent app's MCP clientInfo name, as people call the app.
+  agentAppName(name) {
+    const names = [
+      [/^claude-code$/i, 'Claude Code'],
+      [/^claude-ai$|claude desktop/i, 'Claude Desktop'],
+      [/cursor/i, 'Cursor'],
+      [/visual studio code|vscode|copilot/i, 'VS Code'],
+    ];
+    return names.find(([re]) => re.test(name))?.[1] || name;
+  },
 };

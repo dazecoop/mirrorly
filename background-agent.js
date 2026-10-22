@@ -17,6 +17,9 @@ const AGENT_IDLE_MS = 10 * 60 * 1000; // an unused agent phone's tab closes
 const AGENT_COMMAND_MS = { open: 60000, scroll: 15000, screenshot: 90000 };
 
 let agentSocket = null;
+let agentConnected = false; // a server is listening and said hello back
+let agentClients = []; // the apps using it, e.g. ['claude-code']
+let agentLast = null; // { cmd, url, at } of the last command
 const agentSessions = new Map(); // session -> { tabId, port, ready, pending, idleTimer }
 
 function connectAgent() {
@@ -29,6 +32,9 @@ function connectAgent() {
   }
   agentSocket = ws;
   ws.onopen = async () => {
+    agentConnected = true;
+    // The settings page shows setup as done once an agent has connected.
+    browser.storage.local.set({ agentSeenAt: Date.now() });
     const info = await browser.runtime.getBrowserInfo().catch(() => ({}));
     agentSend({ type: 'hello', role: 'extension', version: browser.runtime.getManifest().version, browser: `${info.name || 'Firefox'} ${info.version || ''}`.trim() });
   };
@@ -40,6 +46,7 @@ function connectAgent() {
       return;
     }
     if (msg.type === 'ping') agentSend({ type: 'pong' });
+    else if (msg.type === 'agents') agentClients = (msg.clients || []).map(String).filter((c) => !/^mirrorly-(cli|headless)$/.test(c));
     else if (msg.type === 'command') {
       runAgentCommand(msg)
         .then((data) => agentSend({ type: 'result', id: msg.id, data }))
@@ -47,7 +54,10 @@ function connectAgent() {
     }
   };
   ws.onclose = () => {
-    if (agentSocket === ws) agentSocket = null;
+    if (agentSocket !== ws) return;
+    agentSocket = null;
+    agentConnected = false;
+    agentClients = [];
   };
 }
 
@@ -82,6 +92,7 @@ async function runAgentCommand({ session, cmd, args = {} }) {
     return {};
   }
   if (!AGENT_COMMAND_MS[cmd]) throw new Error(`Unknown command: ${cmd}`);
+  agentLast = { cmd, url: cmd === 'open' ? args.url : agentLast?.url, at: Date.now() };
   if (cmd === 'open') {
     if (!isWeb(args.url)) throw new Error('Only http and https pages can be opened.');
     if (isRestricted(args.url)) throw new Error("Firefox doesn't let extensions work on this site, so Mirrorly can't show it.");
@@ -134,6 +145,30 @@ function closeAgentSession(session, reason = 'The agent phone was closed.') {
   }
   if (s.tabId !== null) browser.tabs.remove(s.tabId).catch(() => {});
 }
+
+// For the AI agents page and the sidebar's settings: the switch, whether an
+// agent's server is connected, and what agents are doing.
+browser.runtime.onMessage.addListener((msg) => {
+  if (msg?.type === 'agentStatus') {
+    return Promise.resolve({
+      on: Boolean(settings.agentBridge),
+      connected: agentConnected,
+      clients: agentClients,
+      phones: agentSessions.size,
+      last: agentLast,
+      port: Number(settings.agentPort) || Mirrorly.DEFAULTS.agentPort,
+    });
+  }
+  if (msg?.type === 'agentRetry') {
+    connectAgent();
+    return Promise.resolve(true);
+  }
+  if (msg?.type === 'agentClosePhones') {
+    for (const session of [...agentSessions.keys()]) closeAgentSession(session, 'The agent phone was closed from Mirrorly\'s settings.');
+    return Promise.resolve(true);
+  }
+  return undefined;
+});
 
 browser.tabs.onRemoved.addListener((tabId) => {
   for (const [session, s] of agentSessions) {

@@ -335,7 +335,7 @@ function onMobile(port, windowId, token) {
   port.onMessage.addListener((msg) => {
     if (msg.type === 'location') {
       onMobileLocation(windowId, slot, msg.url);
-    } else if (['tint', 'viewport', 'keyboard', 'located', 'pageSize', 'scrolled'].includes(msg.type)) {
+    } else if (['tint', 'viewport', 'keyboard', 'located', 'pageSize', 'scrolled', 'unloading'].includes(msg.type)) {
       sidebars.get(windowId)?.postMessage({ ...msg, slot });
     } else if (msg.type === 'gesture') {
       gestures.set(windowId, Date.now());
@@ -343,8 +343,8 @@ function onMobile(port, windowId, token) {
       view.pendingScroll?.({ x: msg.x, y: msg.y });
       view.pendingScroll = null;
     } else if (msg.type === 'ready') {
-      if (/^(capture|agent)-/.test(windowId)) sidebars.get(windowId)?.postMessage({ type: 'phoneReady', slot });
-      else {
+      sidebars.get(windowId)?.postMessage({ type: 'phoneReady', slot });
+      if (!/^(capture|agent)-/.test(windowId)) {
         if (settings.syncScroll) desktopPortFor(windowId)?.postMessage({ type: 'requestScroll' });
         locatePending(windowId, slot, view);
       }

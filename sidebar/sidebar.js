@@ -333,12 +333,23 @@ class Pane {
 
   navigate(url) {
     this.currentUrl = url;
+    this.setLoading(true);
     this.frame.src = url;
     port.postMessage({ type: 'loading', slot: this.slot, url });
     this.renderOverlay();
   }
 
+  // Dims the page and runs a sheen across the phone while a page loads, so
+  // phones that finish at different times show it. Never in screenshots.
+  setLoading(on) {
+    clearTimeout(this.loadingTimer);
+    this.phone.classList.toggle('loading', on && !offscreen);
+    // A page that never says it's loaded still stops looking busy.
+    if (on) this.loadingTimer = setTimeout(() => this.setLoading(false), 15000);
+  }
+
   showBlank() {
+    this.setLoading(false);
     this.frame?.remove();
     this.frame = null;
     this.currentUrl = null;
@@ -355,6 +366,7 @@ class Pane {
   // The background script stopped this view because the page kept reloading,
   // or Firefox doesn't let extensions run on the site.
   showMessage(kind) {
+    this.setLoading(false);
     const text = MESSAGES[kind];
     this.blocked = true;
     this.blockedEl.querySelector('.blocked-title').textContent = text.title;
@@ -785,7 +797,10 @@ function sharedScale() {
 function arrangePanes() {
   if (offscreen) return;
   const sized = panes.filter((pane) => !pane.el.hidden).map((pane) => [pane, pane.outerSize()]);
-  const height = Math.min(...sized.map(([pane]) => pane.stage.clientHeight)) - STAGE_PAD * 2;
+  // Measured as if the settings panel were closed: opening it leaves the
+  // phones their size, running off the bottom, rather than shrinking them.
+  const settingsHeight = settingsPanel.getBoundingClientRect().height;
+  const height = Math.min(...sized.map(([pane]) => pane.stage.clientHeight)) + settingsHeight - STAGE_PAD * 2;
   const style = getComputedStyle(panesEl);
   const gap = parseFloat(style.columnGap) || 0;
   const width = panesEl.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
@@ -808,6 +823,11 @@ function layoutAll() {
   arrangePanes();
   for (const pane of panes) pane.layout();
 }
+
+// Each stage is watched (Pane), but once the row scrolls the panes have
+// fixed widths and the stages no longer change with the sidebar; the row
+// itself always does.
+if (!offscreen) new ResizeObserver(layoutAll).observe(panesEl);
 
 let noticeTimer = 0;
 function showNotice(text) {
@@ -872,6 +892,29 @@ function showSettings(open) {
   settingsPanel.inert = !open;
   summary.setAttribute('aria-expanded', String(open));
   updateSummary();
+  if (open) updateAgentStatus();
+}
+
+// The AI agents row in the settings: off, on and waiting for an agent, or
+// connected (and to which app). Kept current while the settings are open.
+async function updateAgentStatus() {
+  let s;
+  try {
+    s = await browser.runtime.sendMessage({ type: 'agentStatus' });
+  } catch {
+    return;
+  }
+  const state = !s.on ? 'off' : s.connected ? 'on' : 'waiting';
+  const apps = [...new Set(s.clients.map(Mirrorly.agentAppName))];
+  document.getElementById('agent-dot').dataset.state = state;
+  document.getElementById('agent-title').textContent =
+    state === 'off' ? 'Off' : state === 'waiting' ? 'On · waiting for an agent' : `Connected${apps.length ? ` to ${apps.join(', ')}` : ''}`;
+  document.getElementById('agent-sub').textContent =
+    state === 'off'
+      ? 'Let coding agents open pages in a phone and screenshot them'
+      : s.phones
+        ? `${s.phones} agent phone${s.phones > 1 ? 's' : ''} open, in background tabs`
+        : 'Pages agents open appear in a background tab';
 }
 
 function buildControls() {
@@ -881,6 +924,9 @@ function buildControls() {
     save({ textSize: Number(textSizeSelect.value) });
     for (const pane of panes) pane.rebuild();
   });
+
+  document.getElementById('agents').addEventListener('click', () => browser.runtime.openOptionsPage());
+  setInterval(() => settings.panelOpen && updateAgentStatus(), 2000);
 
   showSettings(settings.panelOpen);
   summary.addEventListener('click', () => {
@@ -1270,6 +1316,10 @@ async function init() {
       pane.showMessage('loop');
     } else if (msg.type === 'keyboard') {
       pane.setKeyboard(msg);
+    } else if (msg.type === 'unloading') {
+      pane.setLoading(true);
+    } else if (msg.type === 'phoneReady') {
+      pane.setLoading(false);
     } else if (msg.type === 'located') {
       const d = pane.device();
       const name = d.id === 'custom' || d.kind === 'fit' ? 'phone' : d.label.split(' / ')[0];

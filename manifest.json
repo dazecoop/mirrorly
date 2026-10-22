@@ -61,6 +61,10 @@
     "default_icon": "icons/icon.svg",
     "open_at_install": false
   },
+  "options_ui": {
+    "page": "options/agents.html",
+    "open_in_tab": true
+  },
   "browser_action": {
     "default_title": "Toggle mobile view",
     "default_icon": "icons/icon.svg"

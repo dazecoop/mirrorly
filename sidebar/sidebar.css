@@ -350,4 +350,16 @@ body.capture.frameless .screen { border-radius: 0 !important; }
 }
 .placeholder[hidden] { display: none; }
 
-.toggle code { font: 10.5px ui-monospace, SFMono-Regular, Menlo, monospace; user-select: all; }
+/* AI agents: status, and a way to their settings page */
+.agent-row {
+  display: flex; align-items: center; gap: 10px; width: 100%; height: auto; padding: 7px 10px;
+  border: 0; border-radius: 0; background: none; text-align: left;
+}
+.agent-row:hover { background: var(--chip); }
+.agent-row .text { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.agent-row .text small { color: var(--muted); font-size: 11px; }
+.agent-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--track); }
+.agent-dot[data-state="waiting"] { background: #d08a12; }
+.agent-dot[data-state="on"] { background: #2fb36a; box-shadow: 0 0 0 3px rgba(47, 179, 106, .2); }
+.agent-open { flex: none; display: flex; align-items: center; gap: 2px; color: var(--accent); font-weight: 600; }
+.agent-open svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }

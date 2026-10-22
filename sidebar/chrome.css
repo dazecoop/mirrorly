@@ -38,7 +38,28 @@
   /* Stops the corner clip from leaking at fractional scales. */
   isolation: isolate;
 }
-.viewport { position: absolute; left: 0; overflow: hidden; }
+.viewport { position: absolute; left: 0; overflow: hidden; transition: opacity .25s ease; }
+
+/* Loading: the page dims and a sheen crosses the whole screen, bars and all. */
+.screen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .25s ease;
+  background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, .32) 50%, transparent 65%) 0 0 / 250% 100% no-repeat;
+}
+.phone.loading .viewport { opacity: .55; }
+.phone.loading .screen::after { opacity: 1; animation: mirrorly-sheen 1.3s ease-in-out infinite; }
+@keyframes mirrorly-sheen {
+  from { background-position: 130% 0; }
+  to { background-position: -30% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .phone.loading .screen::after { animation: none; opacity: 0; }
+}
 .blocked {
   position: absolute;
   inset: 0;

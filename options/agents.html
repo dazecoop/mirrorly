@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mirrorly · AI agents</title>
+<link rel="icon" href="../icons/icon.svg">
+<link rel="stylesheet" href="agents.css">
+</head>
+<body>
+
+<header class="top">
+  <img src="../icons/icon.svg" alt="" width="24" height="24">
+  <b>Mirrorly</b>
+  <span class="sep">·</span>
+  <span>AI agents</span>
+</header>
+
+<main>
+
+  <section class="card main">
+    <div class="main-row">
+      <div>
+        <h1>Let AI agents use Mirrorly</h1>
+        <p class="sub">Your coding agent (Claude Code, Cursor, …) opens pages in a phone, scrolls and takes screenshots, so it can check the mobile layout of what it builds.</p>
+      </div>
+      <label class="switch big" title="Let agents on this computer open pages in a phone in this Firefox">
+        <input type="checkbox" role="switch" id="enabled">
+        <span class="track"><span class="thumb"></span></span>
+        <span class="sr-only">Let AI agents use Mirrorly in this Firefox</span>
+      </label>
+    </div>
+
+    <div class="status" id="status" data-state="off">
+      <span class="dot"></span>
+      <div class="status-text">
+        <div class="status-title" id="status-title">Off</div>
+        <div class="status-sub" id="status-sub"></div>
+      </div>
+      <button class="btn" id="retry" type="button" hidden>Retry now</button>
+      <button class="btn" id="close-phones" type="button" hidden>Close agent phones</button>
+    </div>
+  </section>
+
+  <section class="card" id="setup">
+    <div class="done" id="setup-done" hidden>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+      <div>
+        <div class="done-title">Mirrorly is set up</div>
+        <div class="done-sub" id="setup-done-sub"></div>
+      </div>
+    </div>
+    <h2 id="setup-title"><span class="step">1</span> Add Mirrorly to your agent</h2>
+
+    <details class="fold" id="setup-fold" open>
+      <summary>Setup instructions</summary>
+      <p>Run one command in a terminal. It needs <a href="https://nodejs.org" target="_blank" rel="noopener">Node.js 18 or later</a>, and nothing else.</p>
+      <div class="tabs" role="tablist" id="app-tabs">
+        <button role="tab" class="tab on" data-app="">Every agent app</button>
+        <button role="tab" class="tab" data-app="claude-code">Claude Code</button>
+        <button role="tab" class="tab" data-app="claude-desktop">Claude Desktop</button>
+        <button role="tab" class="tab" data-app="cursor">Cursor</button>
+        <button role="tab" class="tab" data-app="vscode">VS Code project</button>
+      </div>
+      <p class="muted" id="install-where"></p>
+      <div class="code"><pre id="install"></pre><button class="btn copy" data-copy="install" type="button">Copy</button></div>
+      <p class="muted" id="install-after"></p>
+      <details class="inner">
+        <summary>Uninstall</summary>
+        <p class="muted">Removes Mirrorly from the same apps (and the Claude Code skill), then checks it's gone.</p>
+        <div class="code"><pre id="uninstall"></pre><button class="btn copy" data-copy="uninstall" type="button">Copy</button></div>
+      </details>
+    </details>
+  </section>
+
+  <section class="card">
+    <h2><span class="step">2</span> Test it</h2>
+    <p>Start a new session in your agent and paste this. It only checks that the agent can see Mirrorly; nothing is opened.</p>
+    <div class="code"><pre id="test-prompt">Find the Mirrorly MCP server's mirrorly_status tool. Its name may have a prefix, like mcp__mirrorly__mirrorly_status, and if your tools load on demand, search your tools for "mirrorly" first. Call it and reply with exactly what it returns. Only if no Mirrorly tool exists after searching, reply with: MIRRORLY NOT INSTALLED</pre><button class="btn copy" data-copy="test-prompt" type="button">Copy</button></div>
+    <dl class="results">
+      <dt class="ok">"Mirrorly MCP is working … Pages open in the user's Firefox"</dt>
+      <dd>All set: pages open in this Firefox, in a background tab. The status above shows Connected.</dd>
+      <dt class="ok">"Mirrorly MCP is working … The Mirrorly extension is not connected"</dt>
+      <dd>It works, using headless Firefox. To use this Firefox (and your logins), turn on the switch above and test again; it connects within a few seconds.</dd>
+      <dt class="bad">"MIRRORLY NOT INSTALLED"</dt>
+      <dd>The app you're testing in didn't load Mirrorly. Check the install command listed the app with ✔ and ended with ✔ Verified, then fully quit and reopen the app (in VS Code, reload the window). <code>npx -y github:dazecoop/mirrorly status</code> lists which apps have it.</dd>
+    </dl>
+  </section>
+
+  <section class="card">
+    <h2><span class="step">3</span> How to use</h2>
+    <div class="fields">
+      <label class="field">
+        <span class="label">Page</span>
+        <input type="url" id="url" placeholder="http://localhost:3000" spellcheck="false">
+        <span class="hint">A dev server on localhost works, as does any live site.</span>
+      </label>
+      <label class="field">
+        <span class="label">Device</span>
+        <select id="device"></select>
+      </label>
+    </div>
+
+    <div class="tabs" role="tablist" id="use-tabs">
+      <button role="tab" class="tab on" data-use="agent">Ask your agent</button>
+      <button role="tab" class="tab" data-use="cli">Use the command line</button>
+    </div>
+
+    <div id="use-agent">
+      <div class="chips" id="prompt-kinds">
+        <button class="chip on" data-kind="check" type="button">Check the mobile layout</button>
+        <button class="chip" data-kind="compare" type="button">iPhone and Android</button>
+        <button class="chip" data-kind="dark" type="button">Dark mode</button>
+        <button class="chip" data-kind="fix" type="button">Fix and check again</button>
+      </div>
+      <div class="code"><pre id="prompt"></pre><button class="btn copy" data-copy="prompt" type="button">Copy</button></div>
+    </div>
+
+    <div id="use-cli" hidden>
+      <p>For scripts, CI, or agents without MCP. Nothing to install first; each command prints the PNG's path.</p>
+      <div class="code"><pre id="cli"></pre><button class="btn copy" data-copy="cli" type="button">Copy</button></div>
+    </div>
+
+    <dl class="tools">
+      <dt><code>mirrorly_open</code></dt>
+      <dd>Loads a page in a phone: device, browser (Safari, Chrome, Firefox), light or dark, landscape. Again to reload.</dd>
+      <dt><code>mirrorly_scroll</code></dt>
+      <dd>To the top or bottom, a position, by an amount, or to a CSS selector.</dd>
+      <dt><code>mirrorly_screenshot</code></dt>
+      <dd>The phone with its browser bars, just the page in view, or the whole page. Returned as an image and saved as a PNG.</dd>
+      <dt><code>mirrorly_devices</code> · <code>mirrorly_status</code></dt>
+      <dd>The devices on offer; where pages open and what's open.</dd>
+    </dl>
+    <p class="muted">Pages you're signed in to work too: sign in here in Firefox and keep the switch on.</p>
+  </section>
+
+  <details class="card fold-card">
+    <summary>How it works &amp; privacy</summary>
+    <p><strong>Everything stays on this computer.</strong> With the switch on, Mirrorly connects to <code id="addr">ws://127.0.0.1:47616</code>, where only Mirrorly's agent tool listens, and only while an agent app is running it. Each agent session gets its own phone in a background tab of this window; your sidebar and tabs are left alone. An unused agent phone closes after 10 minutes.</p>
+    <p>With the switch off, agents can still use Mirrorly, in a separate headless Firefox without your logins.</p>
+    <p class="muted">The page is drawn by Firefox's engine, so engine-specific CSS can differ slightly from Safari or Chrome.</p>
+  </details>
+
+  <details class="card fold-card">
+    <summary>Options</summary>
+    <label class="opt">
+      <input type="number" id="port" min="1024" max="65535">
+      <div>
+        <div class="opt-title">Bridge port</div>
+        <div class="muted">Change only if <code>47616</code> is taken. The setup command then includes the matching <code>MIRRORLY_PORT</code>.</div>
+      </div>
+    </label>
+  </details>
+
+  <details class="card fold-card">
+    <summary>Troubleshooting</summary>
+    <ul>
+      <li><strong>Always "waiting for an agent":</strong> that's normal when no agent app is running Mirrorly. Its server starts with the agent session and stops after 10 idle minutes; Mirrorly checks for it every 5 seconds.</li>
+      <li><strong>"MIRRORLY NOT INSTALLED":</strong> run <code>npx -y github:dazecoop/mirrorly status</code> in a terminal. It lists each agent app, whether Mirrorly is installed there and whether it starts.</li>
+      <li><strong>Pages open headless even with the switch on:</strong> check the port under Options matches <code>MIRRORLY_PORT</code> in your agent's config (if set).</li>
+      <li><strong>Headless Firefox won't start:</strong> install Firefox, or set <code>MIRRORLY_FIREFOX</code> to its binary.</li>
+      <li><strong>A site won't load:</strong> some sites refuse to be shown in a frame, and Firefox keeps extensions off addons.mozilla.org and a few Mozilla sites.</li>
+    </ul>
+  </details>
+
+</main>
+
+<script src="../shared.js"></script>
+<script src="agents.js"></script>
+</body>
+</html>

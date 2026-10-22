@@ -18,6 +18,7 @@
 //   extension → hub   {type:'hello', role:'extension', version, browser}
 //                     {type:'result', id, data} · {type:'error', id, message} · {type:'pong'}
 //   hub → extension   {type:'command', id, session, cmd, args} · {type:'ping'}
+//                     {type:'agents', clients} (the apps using the bridge, for its settings page)
 //   agent → hub       {type:'hello', role:'agent', client} · {type:'command', id, session, cmd, args}
 //                     {type:'status', id} → {type:'status', id, extension, agents}
 
@@ -136,9 +137,13 @@ class Bridge {
         this.extension = null;
         this.failPending('The Mirrorly extension disconnected (its AI agents switch was turned off, or Firefox closed).');
       }
-      this.agents.delete(ws);
+      if (this.agents.delete(ws)) this.broadcastAgents();
     });
     ws.on('error', () => {});
+  }
+
+  broadcastAgents() {
+    this.send(this.extension?.ws, { type: 'agents', clients: [this.client, ...this.agents.values()] });
   }
 
   onExtensionMessage(ws, msg) {
@@ -150,6 +155,7 @@ class Bridge {
       }
       this.extension = { ws, info: { version: msg.version, browser: msg.browser } };
       if (this.shared) writeState({ extensionLastSeen: new Date().toISOString() });
+      this.broadcastAgents();
       this.extensionWaiters.splice(0).forEach((fn) => fn());
       return;
     }
@@ -160,6 +166,7 @@ class Bridge {
     this.touch();
     if (msg.type === 'hello') {
       this.agents.set(ws, String(msg.client || 'agent').slice(0, 60));
+      this.broadcastAgents();
     } else if (msg.type === 'status') {
       this.send(ws, { type: 'status', id: msg.id, ...this.localStatus() });
     } else if (msg.type === 'command') {

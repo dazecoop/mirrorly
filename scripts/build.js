@@ -20,7 +20,7 @@ const ZIP_PATH = path.join(DIST, `mirrorly-firefox-v${manifest.version}.zip`);
 const INCLUDE = [
   'manifest.json', 'icons',
   'background.js', 'background-agent.js', 'content.js', 'shared.js', 'styles.js', 'touch.js',
-  'sidebar',
+  'sidebar', 'options',
 ];
 
 fs.rmSync(OUT_DIR, { recursive: true, force: true });

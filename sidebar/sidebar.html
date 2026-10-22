@@ -84,11 +84,11 @@
       <section>
         <h2>AI agents</h2>
         <div class="toggles">
-          <label class="toggle">
-            <input type="checkbox" role="switch" data-setting="agentBridge">
-            <span class="text"><b>Let AI agents use Mirrorly</b><small>Agents on this computer can open pages in a phone and take screenshots, in a background tab. Set up with <code>npx -y github:dazecoop/mirrorly install</code></small></span>
-            <span class="switch" aria-hidden="true"></span>
-          </label>
+          <button id="agents" class="agent-row" type="button" title="Set up and manage AI agents' access to Mirrorly">
+            <span id="agent-dot" class="agent-dot" data-state="off" aria-hidden="true"></span>
+            <span class="text"><b id="agent-title">Off</b><small id="agent-sub">Let coding agents open pages in a phone and screenshot them</small></span>
+            <span class="agent-open">Settings<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg></span>
+          </button>
         </div>
       </section>
       </div>

@@ -148,6 +148,10 @@ async function handle(msg) {
     case 'initialize': {
       const client = params?.clientInfo?.name || 'mcp-client';
       if (!phone) phone = new Phone({ client, log });
+      // Open the bridge now, so Mirrorly's settings show this app as
+      // connected (it closes again after 10 idle minutes). The installer's
+      // check doesn't count.
+      if (client !== 'mirrorly-cli') phone.bridge.use().catch(() => {});
       const requested = params?.protocolVersion;
       return {
         protocolVersion: SUPPORTED_PROTOCOLS.includes(requested) ? requested : SUPPORTED_PROTOCOLS[0],

@@ -834,6 +834,9 @@
       post({ type: 'location', url: lastHref });
     }, 150);
 
+    // The sidebar shows the phone as loading from here until 'ready'.
+    addEventListener('beforeunload', () => post({ type: 'unloading' }));
+
     addEventListener('load', () => {
       post({ type: 'ready' });
       reportTint();
