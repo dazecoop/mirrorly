@@ -34,7 +34,8 @@
   "background": {
     "scripts": [
       "shared.js",
-      "background.js"
+      "background.js",
+      "background-agent.js"
     ],
     "persistent": true
   },

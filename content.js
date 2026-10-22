@@ -138,6 +138,9 @@
       case 'measurePage':
         post({ type: 'pageSize', height: pageHeight() });
         break;
+      case 'agentScroll':
+        agentScroll(msg);
+        break;
     }
   }
 
@@ -476,6 +479,34 @@
     (document.body || document.documentElement).append(box);
     setTimeout(() => (box.style.opacity = '0'), holdMs);
     setTimeout(() => box.remove(), holdMs + 450);
+  }
+
+  // --- AI agents (background-agent.js): scroll an agent's phone and report
+  // where it ended up.
+
+  // One of: position ('top' | 'bottom' | 'current'), y (px from the top),
+  // by (px, + is down) or selector (CSS; the element is brought into view,
+  // centred if it fits, otherwise its top near the top of the screen).
+  function agentScroll({ position, y, by, selector }) {
+    let top = scrollY;
+    let found = null;
+    if (selector) {
+      const el = query(selector);
+      found = Boolean(el && visible(el));
+      if (found) {
+        const r = el.getBoundingClientRect();
+        top = scrollY + (r.height < innerHeight * 0.8 ? r.top + r.height / 2 - innerHeight / 2 : r.top - 16);
+      }
+    } else if (position === 'top') top = 0;
+    else if (position === 'bottom') top = scrollMax();
+    else if (Number.isFinite(y)) top = y;
+    else if (Number.isFinite(by)) top = scrollY + by;
+    applyingUntil = performance.now() + 300;
+    // An instant scroll has happened by the time scrollTo returns. (No
+    // requestAnimationFrame: agent phones are in background tabs, where
+    // Firefox doesn't run it.)
+    window.scrollTo({ top: Math.max(0, Math.min(scrollMax(), top)), left: 0, behavior: 'instant' });
+    post({ type: 'scrolled', y: Math.round(scrollY), max: Math.round(scrollMax()), viewportHeight: innerHeight, pageHeight: pageHeight(), title: document.title, found });
   }
 
   // --- "Show in Mirrorly" (the page's context menu)

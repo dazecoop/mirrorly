@@ -24,7 +24,7 @@ const fs = require('fs');
 const http = require('http');
 const os = require('os');
 const path = require('path');
-const { execSync } = require('child_process');
+const { buildXpi } = require('../agent/xpi');
 const { Builder, By } = require('selenium-webdriver');
 const firefox = require('selenium-webdriver/firefox');
 
@@ -73,9 +73,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // --- Firefox -----------------------------------------------------------
 
 async function launch() {
-  const xpi = path.join(os.tmpdir(), 'mirrorly-capture.xpi');
-  fs.rmSync(xpi, { force: true });
-  execSync(`zip -r -X "${xpi}" manifest.json background.js content.js shared.js styles.js touch.js icons sidebar`, { cwd: ROOT, stdio: 'ignore' });
+  const xpi = buildXpi(path.join(os.tmpdir(), 'mirrorly-capture.xpi'));
 
   const options = new firefox.Options()
     .setBinary(FIREFOX_BIN)

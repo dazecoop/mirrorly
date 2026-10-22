@@ -2,19 +2,40 @@
   "name": "mirrorly",
   "version": "1.1.0",
   "private": true,
-  "description": "Mirrorly - see the page as a phone would, side by side with desktop, kept in sync. A Firefox extension.",
+  "description": "Mirrorly - see the page as a phone would, side by side with desktop, kept in sync. A Firefox extension, with an MCP server for AI agents.",
   "license": "MIT",
+  "bin": {
+    "mirrorly": "agent/cli.js"
+  },
+  "files": [
+    "agent",
+    "manifest.json",
+    "background.js",
+    "background-agent.js",
+    "content.js",
+    "shared.js",
+    "styles.js",
+    "touch.js",
+    "icons",
+    "sidebar",
+    "package.json",
+    "README.md"
+  ],
   "scripts": {
     "start": "npx -y web-ext@8 run --start-url https://www.nasa.gov/",
     "lint": "npx -y web-ext@8 lint --ignore-files \"scripts/**\" \"docs/**\" \"store-assets/**\" \"node_modules/**\" \"dist/**\"",
     "build": "node scripts/build.js",
     "icons": "node scripts/generate-icons.js",
     "capture": "node scripts/capture.js",
-    "store-assets": "node scripts/capture.js && node scripts/compose-slides.js firefox && node scripts/compose-slides.js social"
+    "store-assets": "node scripts/capture.js && node scripts/compose-slides.js firefox && node scripts/compose-slides.js social",
+    "test:agent": "node scripts/test-agent.js"
+  },
+  "dependencies": {
+    "selenium-webdriver": "^4.51.0",
+    "ws": "^8.22.0"
   },
   "devDependencies": {
-    "puppeteer": "^25.15.0",
-    "selenium-webdriver": "^4.51.0"
+    "puppeteer": "^25.15.0"
   },
   "engines": {
     "node": ">=18"

@@ -335,7 +335,7 @@ function onMobile(port, windowId, token) {
   port.onMessage.addListener((msg) => {
     if (msg.type === 'location') {
       onMobileLocation(windowId, slot, msg.url);
-    } else if (['tint', 'viewport', 'keyboard', 'located', 'pageSize'].includes(msg.type)) {
+    } else if (['tint', 'viewport', 'keyboard', 'located', 'pageSize', 'scrolled'].includes(msg.type)) {
       sidebars.get(windowId)?.postMessage({ ...msg, slot });
     } else if (msg.type === 'gesture') {
       gestures.set(windowId, Date.now());
@@ -343,7 +343,7 @@ function onMobile(port, windowId, token) {
       view.pendingScroll?.({ x: msg.x, y: msg.y });
       view.pendingScroll = null;
     } else if (msg.type === 'ready') {
-      if (String(windowId).startsWith('capture-')) sidebars.get(windowId)?.postMessage({ type: 'phoneReady', slot });
+      if (/^(capture|agent)-/.test(windowId)) sidebars.get(windowId)?.postMessage({ type: 'phoneReady', slot });
       else {
         if (settings.syncScroll) desktopPortFor(windowId)?.postMessage({ type: 'requestScroll' });
         locatePending(windowId, slot, view);
@@ -386,10 +386,12 @@ function onDesktop(port) {
 
 browser.runtime.onConnect.addListener((port) => {
   const [kind, id, token] = port.name.split(':');
-  // Windows are numbers; screenshot pages use "capture-<id>".
-  const windowKey = /^capture-/.test(id) ? id : Number(id);
+  // Windows are numbers; screenshot pages use "capture-<id>", agent phones
+  // (background-agent.js) "agent-<session>".
+  const windowKey = /^(capture|agent)-/.test(id) ? id : Number(id);
   if (kind === 'sidebar') onSidebar(port, windowKey);
   else if (kind === 'capture') onCapturePage(port, id);
+  else if (kind === 'agent') onAgentPage(port, id);
   else if (kind === 'mobile') onMobile(port, windowKey, token);
   else if (kind === 'desktop') onDesktop(port);
 });

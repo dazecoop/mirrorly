@@ -349,3 +349,5 @@ body.capture.frameless .screen { border-radius: 0 !important; }
   text-align: center;
 }
 .placeholder[hidden] { display: none; }
+
+.toggle code { font: 10.5px ui-monospace, SFMono-Regular, Menlo, monospace; user-select: all; }

@@ -13,6 +13,10 @@ var Mirrorly = {
     syncInputs: true,
     syncNav: true,
     mobileUA: true,
+    // "Let AI agents use Mirrorly": connect to the MCP server on this
+    // computer (agent/bridge.js) at ws://127.0.0.1:<agentPort>.
+    agentBridge: false,
+    agentPort: 47616,
   },
 
   MAX_DEVICES: 10,

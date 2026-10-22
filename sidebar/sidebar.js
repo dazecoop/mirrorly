@@ -28,8 +28,14 @@ const BEZEL = 12;
 const CAPTURE_MARGIN = 8;
 // The tallest screenshot, in image px.
 const MAX_CAPTURE_PX = 16000;
+// The largest image (as a base64 data URL) an agent is handed as is.
+const AGENT_IMAGE_CHARS = 6_000_000;
 const OUTLINE = 4; // the outer ring drawn around the bezel (box-shadow)
 const captureId = new URLSearchParams(location.search).get('capture');
+// An AI agent's phone (background-agent.js), driven by commands.
+const agentSession = new URLSearchParams(location.search).get('agent');
+// Both draw one phone at full size in a background tab.
+const offscreen = Boolean(captureId || agentSession);
 
 const MESSAGES = {
   loop: {
@@ -638,7 +644,7 @@ class Pane {
     const g = geometry(d, kind);
     // The page shrinks to the space above the keyboard and the browser's bar.
     if (this.keyboardShown()) g.height = MirrorlyChrome.keyboardLayout(d, kind).viewBottom - g.top;
-    const offset = captureId ? CAPTURE_MARGIN : null;
+    const offset = offscreen ? CAPTURE_MARGIN : null;
 
     this.phone.classList.toggle('bezel', framed);
     this.phone.classList.toggle('flat', !framed);
@@ -689,9 +695,9 @@ class Pane {
     return { x: r.left - pad + scrollX, y: r.top - pad + scrollY, width: r.width + pad * 2, height: r.height + pad * 2 };
   }
 
-  // Cuts the phone's outline out of the captured rectangle (so the corners
-  // are transparent) and saves it as a PNG.
-  async saveCapture(dataUrl) {
+  // The captured rectangle with the phone's outline cut out (so the corners
+  // are transparent), as a canvas.
+  async renderCapture(dataUrl) {
     const image = new Image();
     image.src = dataUrl;
     await image.decode();
@@ -707,6 +713,12 @@ class Pane {
       ctx.roundRect(0, 0, canvas.width, canvas.height, (bezelOf(this.device()).radius + OUTLINE) * k);
       ctx.fill();
     }
+    return canvas;
+  }
+
+  // Saves the captured rectangle as a PNG in Downloads/Mirrorly.
+  async saveCapture(dataUrl) {
+    const canvas = await this.renderCapture(dataUrl);
     const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
     const url = URL.createObjectURL(blob);
     const d = this.device();
@@ -767,11 +779,11 @@ const PANE_MIN = 200;
 let scale = 1;
 
 function sharedScale() {
-  return captureId ? 1 : scale;
+  return offscreen ? 1 : scale;
 }
 
 function arrangePanes() {
-  if (captureId) return;
+  if (offscreen) return;
   const sized = panes.filter((pane) => !pane.el.hidden).map((pane) => [pane, pane.outerSize()]);
   const height = Math.min(...sized.map(([pane]) => pane.stage.clientHeight)) - STAGE_PAD * 2;
   const style = getComputedStyle(panesEl);
@@ -959,25 +971,6 @@ function initCapture() {
       port.postMessage({ type, slot: pane.slot });
     });
 
-  // Grows the screen to the page's height (in the screen's px, which differ
-  // for pages laid out wider and zoomed out), until the page stops growing
-  // as late content loads into the newly visible part.
-  async function growToPage() {
-    let height = await pageSize('freezeViewport');
-    for (let tries = 0; height && tries < 4; tries++) {
-      const d = Mirrorly.device(pane.config);
-      const width = pane.config.landscape && d.kind !== 'fit' ? d.height : d.width;
-      const zoom = pane.layoutWidth ? width / pane.layoutWidth : 1;
-      const next = Math.ceil(height * zoom);
-      if (Math.abs(next - (pane.pageHeight || 0)) < 2) break;
-      pane.pageHeight = next;
-      panesEl.style.height = `${next + CAPTURE_MARGIN * 2}px`;
-      pane.layout();
-      await sleep(1500);
-      height = await pageSize('measurePage');
-    }
-  }
-
   port.onMessage.addListener(async (msg) => {
     if (msg.type === 'setup') {
       fullPage = msg.mode === 'full';
@@ -1004,7 +997,7 @@ function initCapture() {
       // Let late content settle, restore the scroll position (or grow to the
       // whole page), then capture.
       await sleep(900);
-      if (fullPage) await growToPage();
+      if (fullPage) await growToPage(pane, pageSize);
       else port.postMessage({ type: 'scrollTo', slot: pane.slot });
       // Lazy-loaded images near the new position need a moment.
       await sleep(1500);
@@ -1025,14 +1018,213 @@ function initCapture() {
   });
 }
 
+// Grows the pane's screen to the page's height (in the screen's px, which
+// differ for pages laid out wider and zoomed out), until the page stops
+// growing as late content loads into the newly visible part. pageSize(type)
+// asks the phone for its page height ('freezeViewport' first, then
+// 'measurePage').
+async function growToPage(pane, pageSize, repaint) {
+  let height = await pageSize('freezeViewport');
+  for (let tries = 0; height && tries < 4; tries++) {
+    const d = Mirrorly.device(pane.config);
+    const width = pane.config.landscape && d.kind !== 'fit' ? d.height : d.width;
+    const zoom = pane.layoutWidth ? width / pane.layoutWidth : 1;
+    const next = Math.ceil(height * zoom);
+    if (Math.abs(next - (pane.pageHeight || 0)) < 2) break;
+    pane.pageHeight = next;
+    panesEl.style.height = `${next + CAPTURE_MARGIN * 2}px`;
+    pane.layout();
+    await repaint?.();
+    await sleep(1500);
+    height = await pageSize('measurePage');
+  }
+}
+
+// --- Agent mode: an AI agent's phone in a background tab, driven by the
+// commands background-agent.js passes on from the MCP server.
+
+function initAgent() {
+  document.body.classList.add('capture');
+  document.title = 'Mirrorly · AI agent';
+  windowId = `agent-${agentSession}`;
+  port = browser.runtime.connect({ name: `agent:${agentSession}` });
+  let pane = null;
+  let queue = Promise.resolve();
+  const waiters = new Map(); // message type -> resolve
+
+  // Resolves with the next message of `type` from the phone or background
+  // (after calling send), or rejects after `ms`.
+  const waitFor = (type, ms, send) =>
+    new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        waiters.delete(type);
+        reject(new Error(type === 'phoneReady' ? "The page didn't finish loading in time." : `No answer from the phone (${type}).`));
+      }, ms);
+      waiters.set(type, (msg) => {
+        clearTimeout(timer);
+        waiters.delete(type);
+        if (msg.error) reject(new Error(msg.error));
+        else resolve(msg);
+      });
+      send?.();
+    });
+  const settle = (type, msg) => waiters.get(type)?.(msg);
+  // After the phone's frame is made or resized: background tabs aren't
+  // drawn, so the page only learns its new size when the tab is
+  // (background-agent.js draws a pixel of it).
+  const repaint = async () => {
+    await waitFor('repainted', 5000, () => port.postMessage({ type: 'repaint' })).catch(() => {});
+    await sleep(150);
+  };
+  const pageSize = (type) => waitFor('pageSize', 5000, () => port.postMessage({ type, slot: pane.slot })).then((m) => m.height, () => null);
+  const scroll = (args) => waitFor('scrolled', 10000, () => port.postMessage({ type: 'agentScroll', slot: pane.slot, ...args }));
+
+  const sameConfig = (a, b) => ['device', 'frame', 'landscape', 'customWidth', 'customHeight'].every((k) => a[k] === b[k]);
+
+  const commands = {
+    // Loads `url` in the phone (a new one if the device or browser changed),
+    // waits for it, and reports the page.
+    async open({ url, device = 'iphone-16-pro', frame = 'safari', landscape = false, appearance = 'light', width, height }) {
+      const config = { device, frame, landscape: Boolean(landscape), customWidth: width || 402, customHeight: height || 874 };
+      const look = appearance === 'dark' ? 'dark' : 'light';
+      if (!pane || !sameConfig(pane.config, config) || settings.appearance !== look) {
+        settings.appearance = look;
+        pane?.destroy();
+        panes.length = 0;
+        panesEl.replaceChildren();
+        pane = addPane(config);
+      }
+      const ready = waitFor('phoneReady', 45000);
+      pane.blocked = false;
+      if (pane.frame) pane.navigate(url);
+      else pane.load(url);
+      await repaint();
+      await ready;
+      await repaint();
+      await sleep(1000);
+      const at = await scroll({ position: 'current' });
+      const d = pane.device();
+      return {
+        url: pane.currentUrl,
+        title: at.title,
+        device: d.label,
+        browser: Mirrorly.FRAMES[pane.frameKind()],
+        screen: { width: d.width, height: d.height },
+        viewport: { width: Math.round(pane.viewport.offsetWidth), height: at.viewportHeight },
+        pageHeight: at.pageHeight,
+        y: at.y,
+        maxY: at.max,
+      };
+    },
+
+    async scroll(args) {
+      const at = await scroll(args);
+      // Lazy-loaded content near the new position.
+      await sleep(700);
+      return { y: at.y, maxY: at.max, viewportHeight: at.viewportHeight, pageHeight: at.pageHeight, found: at.found };
+    },
+
+    // mode: 'frame' | 'screen' (the page as shown, no frame) | 'full' (the
+    // whole page). resolution: 'css' (1 image px per CSS px) or 'device'
+    // (the phone's own pixel ratio). maxEdge caps the longer side.
+    async screenshot({ mode = 'frame', resolution = 'css', maxEdge = MAX_CAPTURE_PX }) {
+      const full = mode === 'full';
+      const before = full ? await scroll({ position: 'current' }) : null;
+      pane.frameless = mode !== 'frame';
+      document.body.classList.toggle('frameless', pane.frameless);
+      try {
+        if (full) await growToPage(pane, pageSize, repaint);
+        pane.layout();
+        await sleep(full ? 1500 : 300);
+        const rect = pane.captureRect();
+        const base = resolution === 'device' ? pane.device().dpr || 2 : 1;
+        const scale = Math.min(base, Math.min(maxEdge, MAX_CAPTURE_PX) / Math.max(rect.width, rect.height));
+        const shot = await waitFor('captured', 30000, () => port.postMessage({ type: 'captureReady', rect, scale }));
+        const canvas = await pane.renderCapture(shot.dataUrl);
+        const dataUrl = canvas.toDataURL('image/png');
+        // Agent apps take images up to about 5 MB; past that, a JPEG to look at
+        // (the PNG is still saved).
+        let preview = null;
+        for (let k = 1, q = 0.85; dataUrl.length > AGENT_IMAGE_CHARS && (!preview || preview.length > AGENT_IMAGE_CHARS) && k > 0.2; k *= 0.75, q = 0.75) {
+          const small = document.createElement('canvas');
+          small.width = Math.round(canvas.width * k);
+          small.height = Math.round(canvas.height * k);
+          const ctx = small.getContext('2d');
+          ctx.fillStyle = '#fff';
+          ctx.fillRect(0, 0, small.width, small.height);
+          ctx.drawImage(canvas, 0, 0, small.width, small.height);
+          preview = small.toDataURL('image/jpeg', q);
+        }
+        return { dataUrl, preview, width: canvas.width, height: canvas.height, scale };
+      } finally {
+        pane.frameless = false;
+        document.body.classList.remove('frameless');
+        if (full) {
+          // The page's 100vh was fixed for the capture: reload it as it was.
+          pane.pageHeight = null;
+          panesEl.style.height = '';
+          pane.layout();
+          // A new frame, so nothing more comes from the old page.
+          const ready = waitFor('phoneReady', 45000);
+          pane.rebuild();
+          await repaint();
+          await ready.catch(() => {});
+          await repaint();
+          // Again once late images have changed the page's height.
+          for (const wait of [600, 900]) {
+            await sleep(wait);
+            await scroll({ y: before.y }).catch(() => {});
+          }
+        }
+      }
+    },
+  };
+
+  port.onMessage.addListener((msg) => {
+    if (msg.type === 'agentCommand') {
+      // One at a time, in order.
+      queue = queue.then(async () => {
+        try {
+          if (!commands[msg.cmd]) throw new Error(`Unknown command: ${msg.cmd}`);
+          if (msg.cmd !== 'open' && !pane) throw new Error('No page is open yet: call open first.');
+          const data = await commands[msg.cmd](msg.args || {});
+          port.postMessage({ type: 'agentDone', id: msg.id, data });
+        } catch (e) {
+          port.postMessage({ type: 'agentDone', id: msg.id, error: String(e.message || e) });
+        }
+      });
+      return;
+    }
+    if (!pane) return;
+    if (msg.type === 'tint') {
+      if (/^rgba?\([\d.,\s%]+\)$/.test(msg.color)) pane.tint = msg.color;
+      pane.layout();
+    } else if (msg.type === 'viewport') {
+      pane.layoutWidth = msg.width;
+      pane.layout();
+    } else if (msg.type === 'location') {
+      pane.currentUrl = msg.url;
+      pane.renderOverlay();
+    } else if (['phoneReady', 'pageSize', 'scrolled', 'captured', 'repainted'].includes(msg.type)) {
+      settle(msg.type, msg);
+    } else if (msg.type === 'restricted') {
+      settle('phoneReady', { error: "Firefox doesn't let extensions work on this site, so Mirrorly can't show it." });
+    } else if (msg.type === 'loop') {
+      pane.showMessage('loop');
+      settle('phoneReady', { error: MESSAGES.loop.text });
+    }
+  });
+}
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function init() {
-  if (captureId) {
+  if (captureId || agentSession) {
     settings = await Mirrorly.loadSettings();
-    initCapture();
+    if (captureId) initCapture();
+    else initAgent();
     return;
   }
   // ?window=<id> or ?window=other lets the page be opened in a tab for
