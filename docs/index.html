@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mirrorly — Mobile preview for Firefox</title>
+<meta name="description" content="A free, open source Firefox extension: see the page you're on as a phone shows it, in the sidebar, with real iPhone and Android frames kept in sync with the desktop tab.">
+<link rel="icon" href="icon32.png" type="image/png">
+<link rel="canonical" href="https://dazecoop.github.io/mirrorly/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Mirrorly — Mobile preview for Firefox">
+<meta property="og:description" content="See the page you're on as a phone shows it, in Firefox's sidebar, kept in sync with the desktop tab. Free and open source.">
+<meta property="og:url" content="https://dazecoop.github.io/mirrorly/">
+<meta property="og:image" content="https://dazecoop.github.io/mirrorly/social-preview.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <a class="brand" href="./">
+    <img src="icon32.png" alt="" width="32" height="32">
+    <span>Mirrorly</span>
+  </a>
+  <nav>
+    <a href="./" aria-current="page">Overview</a>
+    <a href="support.html">Support</a>
+    <a href="privacy.html">Privacy</a>
+  </nav>
+</header>
+
+<main>
+<h1>Mobile preview for Firefox</h1>
+
+<p class="lede">A free, open source Firefox extension that shows the page you're on as a
+phone shows it, in Firefox's sidebar, right next to the desktop version.
+Real iPhone and Android frames, with every scroll, tap and keystroke kept in
+sync between the two.</p>
+
+<img class="hero" src="social-preview.png" width="1600" height="800"
+     alt="Firefox with Airbnb open on the desktop and the Mirrorly sidebar beside it, showing the same page in an iPhone 17 Pro frame with Safari's toolbar.">
+<p class="caption">The desktop page and its mobile version, side by side.</p>
+
+<p>Open the sidebar on any site and Mirrorly loads the same page in a phone.
+Scroll the desktop and the phone follows; tap a menu in the phone and it opens
+on the desktop too. It's for anyone who builds, tests or reviews websites and
+wants to see the mobile layout without reaching for a real phone every time.</p>
+
+<ul class="pills">
+  <li>Works on any site</li>
+  <li>Signed-in pages too</li>
+  <li>Two phones at once</li>
+  <li>No account needed</li>
+  <li>No tracking</li>
+  <li>MIT licensed</li>
+</ul>
+
+<p class="store">
+  <a href="https://addons.mozilla.org/firefox/addon/mirrorly/">
+    <img src="firefox-add-ons-badge.png" width="248" height="70"
+         alt="Get the add-on for Firefox">
+  </a>
+</p>
+<p class="caption">Firefox 128 or later. Loading it from source is covered in the
+<a href="https://github.com/dazecoop/mirrorly#install">README</a>.</p>
+
+<h2>Why not Responsive Design Mode?</h2>
+<p>Firefox's built-in Responsive Design Mode turns your tab into a blank
+rectangle at a phone's width. Mirrorly does more:</p>
+<ul>
+  <li><strong>It's more accurate.</strong> Real device frames, browser bars,
+      keyboards, safe areas and iOS's Text Size, measured from real phones, so
+      you see what Safari's toolbar or the keyboard actually covers.</li>
+  <li><strong>It keeps everything in sync.</strong> Scrolling, taps, typing
+      and page changes are mirrored between the desktop tab and the phone,
+      both ways.</li>
+  <li><strong>Desktop and mobile are on screen at once.</strong> The desktop
+      page stays as it is, with the phone beside it in the sidebar. Or two
+      phones, say an iPhone next to a Pixel.</li>
+</ul>
+
+<h2>Everything stays in sync</h2>
+<p>Scrolling lines up on the same content rather than the same percentage, so
+the phone shows the part of the page you're looking at even though its layout is
+much taller. Taps on buttons, menus and toggles are mirrored, text typed into a
+form appears in every view, and links, back and forward, reloads and tab
+switches carry across. It works in both directions, and each part can be turned
+off.</p>
+<p>Add a second device and you can put an iPhone next to a Pixel, both in sync
+with the desktop tab. The phones use your tabs' cookies, so pages you're signed
+in to, like dashboards and admin panels, work in the mobile view too.</p>
+
+<img class="hero" src="preview-sync.png" width="1600" height="800" loading="lazy"
+     alt="NASA's homepage in an iPhone 17 Pro and a Pixel 9, side by side and tilted, with callouts for scrolling, taps, typing and pages.">
+<p class="caption">An iPhone and a Pixel, both following the desktop tab.</p>
+
+<h2>Measured from real phones</h2>
+<p>The frames, the browser bars and the keyboards are matched against
+screenshots from real iPhones: the Dynamic Island and status bar, Safari 26's
+floating toolbar, Chrome's and Firefox's bars, and the bar each browser puts
+above the keyboard. The page gets the viewport, user agent, pixel ratio and safe
+areas that phone would give it, so a site that asks how much of the screen
+Safari's toolbar covers gets the right answer.</p>
+<p>Tap a text field and the keyboard slides up: the iOS keyboard on iPhones,
+Gboard on Android, with the email and phone layouts too. You can type on it.
+The iOS <em>Text Size</em> setting is there as well, for sites that follow it.</p>
+
+<img class="hero" src="preview-real-phones.png" width="1600" height="800" loading="lazy"
+     alt="An iPhone 17 Pro in Mirrorly with Wikipedia's search open, Saturn V typed in and the iOS keyboard showing, with callouts for the Dynamic Island, Safari's keyboard bar and the keyboard.">
+<p class="caption">The iOS keyboard and Safari's keyboard bar, on Wikipedia.</p>
+
+<h2>Every phone that matters</h2>
+<p>iPhones from the SE to the 17 Pro Max, Pixel, Galaxy and Redmi, the iPad mini,
+or any custom size. Phones with identical screens share an entry, so the list
+stays short. Draw each one in Safari, Chrome or Firefox, or just the bare
+screen, and rotate it to landscape.</p>
+
+<img class="hero" src="preview-devices.png" width="1600" height="800" loading="lazy"
+     alt="Five phones fanned out: an iPhone SE showing Airbnb, an iPhone 16 in Firefox and an iPhone 17 Pro Max in Chrome showing National Geographic, a Galaxy with Gboard on Wikipedia, and a Pixel showing LEGO.">
+<p class="caption">An iPhone SE, iPhone 16, iPhone 17 Pro Max, Galaxy S25 Ultra and Pixel 9.</p>
+
+<h2>Feels like a touch screen</h2>
+<p>With <strong>Touch</strong> on, a fingertip replaces the pointer, you drag to scroll
+(with momentum), and hover effects are switched off: <code>:hover</code> styles never
+apply, and <code>(hover)</code> and <code>(pointer)</code> media queries answer as a phone
+would. Light and dark mode switch the phone's bars and tell the page which to
+use.</p>
+
+<h2>Screenshots</h2>
+<p><strong>Screenshot</strong> saves a PNG of the phone at its real resolution (1206 × 2622
+for an iPhone 17 Pro screen), with the frame on a transparent background, ready
+for a bug report or a design review.</p>
+
+<h2>Privacy</h2>
+<p>Mirrorly has no account, no analytics, no tracking and no server. Your
+settings are stored by Firefox on your computer. The only network requests it
+makes are for the page you're already viewing, and the
+<a href="privacy.html">privacy policy</a> explains each one and why each permission is
+needed.</p>
+
+<h2>Help and source</h2>
+<p>Questions, bugs and feature requests go to the <a href="support.html">support
+page</a>. Mirrorly is MIT licensed and the full source is on
+<a href="https://github.com/dazecoop/mirrorly">GitHub</a>.</p>
+</main>
+
+<footer>
+  <a href="https://addons.mozilla.org/firefox/addon/mirrorly/">Firefox Add-ons</a> ·
+  <a href="support.html">Support</a> ·
+  <a href="privacy.html">Privacy policy</a> ·
+  <a href="https://github.com/dazecoop/mirrorly">source on GitHub</a> ·
+  MIT licensed
+</footer>
+
+</div>
+</body>
+</html>

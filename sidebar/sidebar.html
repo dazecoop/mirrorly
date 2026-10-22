@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Mirrorly</title>
+  <link rel="stylesheet" href="sidebar.css">
+  <link rel="stylesheet" href="chrome.css">
+</head>
+<body>
+  <header class="bar">
+    <div class="row">
+      <button id="summary" class="summary" type="button" aria-expanded="false" aria-controls="settings">
+        <span id="summary-text"></span>
+        <svg class="chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg>
+      </button>
+      <button id="add-device" class="text-button" type="button" title="Show a second device next to this one">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>Device
+      </button>
+    </div>
+
+    <div id="settings" class="settings-wrap" inert>
+      <div class="settings">
+      <section>
+        <h2>Keep in sync</h2>
+        <div class="toggles">
+          <label class="toggle">
+            <input type="checkbox" role="switch" data-setting="syncScroll">
+            <span class="text"><b>Scrolling</b><small>Both views show the same part of the page</small></span>
+            <span class="switch" aria-hidden="true"></span>
+          </label>
+          <label class="toggle">
+            <input type="checkbox" role="switch" data-setting="syncNav">
+            <span class="text"><b>Pages</b><small>Links, back/forward, reloads and tab switches</small></span>
+            <span class="switch" aria-hidden="true"></span>
+          </label>
+          <label class="toggle">
+            <input type="checkbox" role="switch" data-setting="syncClicks">
+            <span class="text"><b>Taps</b><small>Buttons, menus and toggles pressed in either view</small></span>
+            <span class="switch" aria-hidden="true"></span>
+          </label>
+          <label class="toggle">
+            <input type="checkbox" role="switch" data-setting="syncInputs">
+            <span class="text"><b>Typing</b><small>Text typed into form fields, and the keyboard opening</small></span>
+            <span class="switch" aria-hidden="true"></span>
+          </label>
+        </div>
+      </section>
+
+      <section>
+        <h2>Phone</h2>
+        <div class="toggles">
+          <label class="toggle">
+            <input type="checkbox" role="switch" data-setting="touchMode">
+            <span class="text"><b>Touch</b><small>Drag to scroll, fingertip pointer, no hover effects</small></span>
+            <span class="switch" aria-hidden="true"></span>
+          </label>
+          <label class="toggle">
+            <input type="checkbox" role="switch" data-setting="mobileUA">
+            <span class="text"><b>Phone user agent</b><small>Sites see a phone browser, not desktop Firefox</small></span>
+            <span class="switch" aria-hidden="true"></span>
+          </label>
+          <label class="toggle">
+            <input type="checkbox" role="switch" data-setting="softKeyboard">
+            <span class="text"><b>Show soft keyboard</b><small>The phone keyboard slides up when a text field is focused (iPhones)</small></span>
+            <span class="switch" aria-hidden="true"></span>
+          </label>
+        </div>
+        <div class="fields">
+          <label class="field" id="text-size-field">
+            <span>Text size</span>
+            <select id="text-size" title="Match the iPhone's Settings → Display &amp; Brightness → Text Size. Sites that follow it, such as Wikipedia, change size."></select>
+          </label>
+          <div class="field">
+            <span id="appearance-label">Appearance</span>
+            <div class="segmented" role="radiogroup" aria-labelledby="appearance-label">
+              <label><input type="radio" name="appearance" value="auto"><span>Auto</span></label>
+              <label><input type="radio" name="appearance" value="light"><span>Light</span></label>
+              <label><input type="radio" name="appearance" value="dark"><span>Dark</span></label>
+            </div>
+          </div>
+        </div>
+      </section>
+      </div>
+    </div>
+
+    <div id="notice" class="notice" role="status" aria-hidden="true">
+      <span id="notice-text"></span>
+      <button id="notice-close" class="icon-button" type="button" aria-label="Dismiss">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+      </button>
+    </div>
+
+    <div id="url" class="url"></div>
+  </header>
+
+  <main id="panes">
+    <p id="placeholder" class="placeholder" hidden>Open a web page in this window to see its mobile view here.</p>
+  </main>
+
+  <template id="pane-template">
+    <section class="pane">
+      <div class="pane-box">
+        <select class="device" aria-label="Device" title="Device"></select>
+        <select class="frame" aria-label="Browser" title="Browser drawn around the page"></select>
+        <div class="pane-actions">
+          <button class="text-button rotate" type="button" title="Switch between portrait and landscape">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="5.5" width="8" height="8" rx="1.5"/><path d="M7.5 2.5h2.8a3.2 3.2 0 0 1 3.2 3.2v1.8M12 6l1.5 1.5L15 6"/></svg>Rotate
+          </button>
+          <button class="text-button shoot" type="button" title="Save a PNG screenshot of this phone to your Downloads folder">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 5.5h2l1.2-1.8h4.6l1.2 1.8h2v7h-11z"/><circle cx="8" cy="8.8" r="2.3"/></svg>Screenshot
+          </button>
+          <button class="text-button remove" type="button" title="Remove this device">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>Remove
+          </button>
+        </div>
+        <div class="row custom" hidden>
+          <label class="dim">W <input class="custom-width" type="number" min="200" max="3000" step="1"></label>
+          <span class="times">×</span>
+          <label class="dim">H <input class="custom-height" type="number" min="200" max="3000" step="1"></label>
+        </div>
+        <div class="size"></div>
+      </div>
+      <div class="stage">
+        <div class="phone" hidden>
+          <div class="hardware"></div>
+          <div class="screen">
+            <div class="viewport">
+              <div class="blocked" hidden>
+                <div class="blocked-card">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 2.5 20h19zM12 10v4.5M12 17.2v.3"/></svg>
+                  <b class="blocked-title"></b>
+                  <p class="blocked-text"></p>
+                  <p class="hint"></p>
+                  <button class="retry" type="button">Try again</button>
+                </div>
+              </div>
+            </div>
+            <div class="overlay"></div>
+            <div class="finger" hidden></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </template>
+
+  <script src="../shared.js"></script>
+  <script src="chrome.js"></script>
+  <script src="sidebar.js"></script>
+</body>
+</html>

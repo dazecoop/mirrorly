@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5b63f0"/>
+      <stop offset="1" stop-color="#b65fd8"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity=".22"/>
+      <stop offset=".5" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="30" fill="url(#tile)"/>
+  <rect width="128" height="128" rx="30" fill="url(#shine)"/>
+  <!-- Desktop browser window, with a page in it -->
+  <rect x="16" y="26" width="76" height="58" rx="10" fill="none" stroke="#fff" stroke-width="7"/>
+  <path d="M16 40.5h76" stroke="#fff" stroke-width="5"/>
+  <rect x="26" y="50" width="22" height="22" rx="4" fill="#fff" fill-opacity=".9"/>
+  <rect x="54" y="51" width="24" height="5" rx="2.5" fill="#fff" fill-opacity=".9"/>
+  <rect x="54" y="61" width="16" height="5" rx="2.5" fill="#fff" fill-opacity=".6"/>
+  <!-- Phone in front, cut out from the window, showing the same page -->
+  <rect x="70" y="46" width="42" height="68" rx="11" fill="#fff" stroke="url(#tile)" stroke-width="6" paint-order="stroke"/>
+  <rect x="76" y="53" width="30" height="51" rx="5" fill="url(#tile)"/>
+  <rect x="80.5" y="58" width="21" height="14" rx="3" fill="#fff" fill-opacity=".9"/>
+  <rect x="80.5" y="77" width="21" height="4.5" rx="2.25" fill="#fff" fill-opacity=".9"/>
+  <rect x="80.5" y="85.5" width="14" height="4.5" rx="2.25" fill="#fff" fill-opacity=".6"/>
+  <rect x="85" y="107.5" width="12" height="3" rx="1.5" fill="url(#tile)" fill-opacity=".55"/>
+</svg>

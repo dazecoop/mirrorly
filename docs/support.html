@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Support — Mirrorly</title>
+<meta name="description" content="Get help with Mirrorly, the mobile preview extension for Firefox: report a bug, ask a question or request a feature.">
+<link rel="icon" href="icon32.png" type="image/png">
+<link rel="canonical" href="https://dazecoop.github.io/mirrorly/support.html">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <a class="brand" href="./">
+    <img src="icon32.png" alt="" width="32" height="32">
+    <span>Mirrorly</span>
+  </a>
+  <nav>
+    <a href="./">Overview</a>
+    <a href="support.html" aria-current="page">Support</a>
+    <a href="privacy.html">Privacy</a>
+  </nav>
+</header>
+
+<main>
+<h1>Support</h1>
+
+<p class="lede">Mirrorly is free and open source, maintained in the open on GitHub. The
+fastest way to get help, report a bug or ask for a feature is to
+<a href="https://github.com/dazecoop/mirrorly/issues">open an issue</a>.</p>
+
+<h2>Reporting a bug</h2>
+<p>Include as much of this as you can:</p>
+<ul>
+  <li>Your Firefox version, and Mirrorly's version from <code>about:addons</code>.</li>
+  <li>The site, the device and browser chosen in Mirrorly, and whether the
+      problem is in one view or in syncing between them.</li>
+  <li>What you did, what you expected, and what happened instead.</li>
+  <li>A screenshot from the phone (the <strong>Screenshot</strong> button) and, if it helps,
+      one from your real phone to compare.</li>
+</ul>
+
+<h2>Common questions</h2>
+
+<h3>Is it the same as the phone?</h3>
+<p>Very close, but not identical. The page is drawn by Firefox's engine, not
+Safari's WebKit or Chrome's Blink, so engine-specific CSS can differ. Mirrorly
+gives the page the phone's screen size, user agent, pixel ratio, text size and
+safe areas, and turns off hover, so layouts match in the vast majority of cases.
+It sends mouse events rather than touch events, and pinch-zoom isn't emulated.</p>
+
+<h3>A site won't load, or keeps reloading itself.</h3>
+<p>Some sites refuse to be shown inside a frame, or detect the phone user agent
+and redirect. Mirrorly stops a page that reloads itself more than six times in
+three seconds and shows a message. Turning off <strong>Phone user agent</strong> in the
+settings sometimes helps.</p>
+
+<h3>It doesn't work on addons.mozilla.org.</h3>
+<p>Firefox doesn't let any extension run on addons.mozilla.org and a few other
+Mozilla sites, so Mirrorly shows a message there instead.</p>
+
+<h3>Do pages I'm signed in to work?</h3>
+<p>Yes. The phones use the same cookies as your tabs, so if you're signed in on
+the desktop, you're signed in in the phone too. Dashboards, admin panels and
+other pages behind a login work in the mobile view.</p>
+
+<h3>How is it different from Responsive Design Mode?</h3>
+<p>Firefox's Responsive Design Mode resizes your tab to a phone's width.
+Mirrorly keeps the desktop page as it is and shows the phone beside it (or two
+phones), with scrolling, taps, typing and pages kept in sync. It also draws
+what a real phone adds on top of the page: the frame, the browser's bars, the
+keyboard and the safe areas, measured from real phones, plus iOS's Text
+Size.</p>
+
+<h3>The keyboard doesn't open.</h3>
+<p>Like iOS, the keyboard only opens for a field you tapped, not one the page
+focused by itself. It also needs <strong>Show soft keyboard</strong> on, and portrait.</p>
+
+<h3>Where do screenshots go?</h3>
+<p>To a <code>Mirrorly</code> folder in your Downloads folder, named after the device,
+browser and time.</p>
+
+<h2>Feature requests</h2>
+<p>Open an issue describing what you'd like it to do and why. Screenshots from a
+real phone help a lot for anything visual.</p>
+
+<h2>Contact</h2>
+<p>Issues are the best place for anything about Mirrorly, so the answer helps
+the next person too: <a href="https://github.com/dazecoop/mirrorly/issues">github.com/dazecoop/mirrorly/issues</a>.</p>
+</main>
+
+<footer>
+  <a href="./">Overview</a> ·
+  <a href="privacy.html">Privacy policy</a> ·
+  <a href="https://github.com/dazecoop/mirrorly">source on GitHub</a>
+</footer>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,22 @@
+{
+  "name": "mirrorly",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Mirrorly - see the page as a phone would, side by side with desktop, kept in sync. A Firefox extension.",
+  "license": "MIT",
+  "scripts": {
+    "start": "npx -y web-ext@8 run --start-url https://www.nasa.gov/",
+    "lint": "npx -y web-ext@8 lint --ignore-files \"scripts/**\" \"docs/**\" \"store-assets/**\" \"node_modules/**\" \"dist/**\"",
+    "build": "node scripts/build.js",
+    "icons": "node scripts/generate-icons.js",
+    "capture": "node scripts/capture.js",
+    "store-assets": "node scripts/capture.js && node scripts/compose-slides.js firefox && node scripts/compose-slides.js social"
+  },
+  "devDependencies": {
+    "puppeteer": "^25.15.0",
+    "selenium-webdriver": "^4.51.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

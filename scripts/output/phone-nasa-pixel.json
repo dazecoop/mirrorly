@@ -1,0 +1,36 @@
+{
+  "_radius": 56,
+  "_size": {
+    "h": 947,
+    "w": 436
+  },
+  "accessory": null,
+  "home": null,
+  "island": null,
+  "key": null,
+  "keyboard": null,
+  "page": {
+    "h": 819,
+    "w": 412,
+    "x": 12,
+    "y": 100
+  },
+  "screen": {
+    "h": 923,
+    "w": 412,
+    "x": 12,
+    "y": 12
+  },
+  "status": {
+    "h": 32,
+    "w": 412,
+    "x": 12,
+    "y": 12
+  },
+  "toolbar": {
+    "h": 56,
+    "w": 412,
+    "x": 12,
+    "y": 44
+  }
+}

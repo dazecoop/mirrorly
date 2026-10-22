@@ -1,0 +1,365 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<!--
+  One store slide, filled in by compose-slides.js through window.render().
+  Copy column on the left, product shots on the right, feature bar along the
+  bottom, in Mirrorly's indigo-to-orchid.
+
+  AMO shows listing screenshots at roughly 320x200 until they're clicked, so
+  the type is large and the product shots are big and glowing.
+
+  Layouts:
+    phones  - phone captures placed on the stage, flat or tilted in 3D, with
+              callout cards whose dashed connectors point at parts of them.
+    browser - a drawn Firefox window with the Mirrorly sidebar open beside
+              the desktop page, plus callouts.
+    panel   - the settings panel, large, with callouts on its rows.
+
+  Callout targets are markers placed inside an image (from the capture's
+  .json boxes, or a fraction of the image), so connectors still land on the
+  right spot when the image is rotated or tilted.
+-->
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1280px; height: 800px; overflow: hidden; }
+  body {
+    font-family: -apple-system, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;
+    background:
+      radial-gradient(760px 560px at 74% 48%, rgba(91,99,240,0.28), transparent 65%),
+      radial-gradient(620px 460px at 96% 96%, rgba(182,95,216,0.20), transparent 62%),
+      radial-gradient(600px 420px at 6% 100%, rgba(182,95,216,0.10), transparent 60%),
+      linear-gradient(rgba(255,255,255,0.028) 1px, transparent 1px) 0 0 / 40px 40px,
+      linear-gradient(90deg, rgba(255,255,255,0.028) 1px, transparent 1px) 0 0 / 40px 40px,
+      #090a16;
+    color: #fff;
+    position: relative;
+  }
+
+  .logo { position: absolute; top: 46px; left: 56px; display: flex; align-items: center; gap: 13px; }
+  .logo img { width: 42px; height: 42px; display: block; }
+  .logo .name { font-size: 26px; font-weight: 700; letter-spacing: -0.01em; }
+
+  .copy { position: absolute; top: 132px; left: 56px; width: 418px; z-index: 5; }
+  .eyebrow {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 13px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+    color: #a9b2ff; margin-bottom: 18px;
+  }
+  .eyebrow .dash { width: 22px; height: 2px; background: #a9b2ff; display: inline-block; }
+
+  .headline { font-size: 50px; font-weight: 800; line-height: 1.06; letter-spacing: -0.025em; margin-bottom: 22px; }
+  .headline .accent {
+    background: linear-gradient(90deg, #a5b0ff, #e4a6f3);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    display: block;
+  }
+  .subcopy { font-size: 22px; line-height: 1.45; color: #b9bccb; margin-bottom: 30px; }
+
+  .cta {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 16px 32px; border-radius: 999px; font-size: 18px; font-weight: 700; color: #fff;
+    background: linear-gradient(90deg, #5b63f0, #b65fd8);
+    box-shadow: 0 10px 34px rgba(110,95,235,0.45);
+    width: fit-content;
+  }
+
+  .more { margin-top: 26px; font-size: 17px; line-height: 1.5; color: #8f94a8; }
+  .more:empty { display: none; }
+
+  .features {
+    position: absolute; bottom: 44px; left: 56px; z-index: 5;
+    display: flex; align-items: center;
+    padding: 13px 8px; border-radius: 14px;
+    background: rgba(255,255,255,0.035); border: 1px solid rgba(255,255,255,0.09);
+    font-size: 16px; font-weight: 600; color: #d4d6e2;
+    backdrop-filter: blur(6px);
+  }
+  .features span { display: flex; align-items: center; gap: 9px; padding: 0 16px; white-space: nowrap; }
+  .features span + span { border-left: 1px solid rgba(255,255,255,0.10); }
+  .features .dot { width: 9px; height: 9px; border-radius: 50%; }
+
+  .dots { position: absolute; bottom: 64px; right: 56px; z-index: 5; display: flex; gap: 7px; }
+  .dots i { width: 7px; height: 7px; border-radius: 50%; background: #2e3050; display: block; }
+  .dots i.active { width: 22px; border-radius: 4px; background: linear-gradient(90deg, #5b63f0, #b65fd8); }
+
+  .stage { position: absolute; inset: 0; z-index: 1; pointer-events: none; perspective: 1800px; }
+
+  /* A product shot: rounded to the phone's own corners, glowing. */
+  .shot { position: absolute; transform-origin: 50% 50%; }
+  .shot img { display: block; width: 100%; }
+  .shot .clip { position: relative; overflow: hidden; }
+  .shot.glow .clip {
+    box-shadow:
+      0 0 0 1.5px rgba(170,180,255,0.55),
+      0 0 0 6px rgba(91,99,240,0.10),
+      0 0 50px rgba(100,95,240,0.50),
+      0 0 120px rgba(182,95,216,0.24),
+      0 40px 90px rgba(0,0,0,0.55);
+  }
+  .shot .marker { position: absolute; width: 2px; height: 2px; margin: -1px 0 0 -1px; }
+  .shot.dim { filter: brightness(0.82) saturate(0.95); }
+
+  svg.wires { position: absolute; inset: 0; width: 1280px; height: 800px; overflow: visible; z-index: 3; }
+  .wire { fill: none; stroke: rgba(176,184,255,0.85); stroke-width: 1.6; stroke-dasharray: 3 4; }
+  .wire-end { fill: #c3c9ff; filter: drop-shadow(0 0 5px rgba(150,160,255,0.95)); }
+
+  .callout {
+    position: absolute; z-index: 4; display: flex; align-items: center; gap: 13px;
+    padding: 12px 16px 12px 12px; border-radius: 13px;
+    background: rgba(19,20,46,0.93); border: 1px solid rgba(170,175,255,0.38);
+    box-shadow: 0 0 24px rgba(100,95,240,0.25), 0 14px 30px rgba(0,0,0,0.4);
+    white-space: nowrap;
+  }
+  .callout .ic { width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0; display: grid; place-items: center; }
+  .callout .ic svg { width: 19px; height: 19px; }
+  .callout .t { font-size: 17px; font-weight: 700; color: #f0f1ff; line-height: 1.2; }
+  .callout .s { font-size: 13.5px; color: #a6a9bd; margin-top: 2px; line-height: 1.3; }
+
+  /* A label pill (idently's lens tag), placed freely on the stage. */
+  .tag {
+    position: absolute; z-index: 4;
+    font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #dfe2ff;
+    background: #1b1c44; border: 1px solid rgba(170,175,255,0.45);
+    padding: 7px 13px; border-radius: 999px;
+    box-shadow: 0 0 20px rgba(100,95,240,0.35);
+  }
+
+  /* ---- Browser layout: a drawn Firefox window with the sidebar open ---- */
+  .ff {
+    position: absolute; border-radius: 12px; overflow: hidden; background: #1c1b22;
+    box-shadow:
+      0 0 0 1.5px rgba(170,180,255,0.55),
+      0 0 50px rgba(100,95,240,0.45),
+      0 0 120px rgba(182,95,216,0.22),
+      0 40px 90px rgba(0,0,0,0.55);
+  }
+  .tabs { display: flex; align-items: flex-end; gap: 4px; height: 40px; padding: 0 10px 0 12px; }
+  .tabs .lights { display: flex; gap: 7px; margin-right: 12px; align-self: center; }
+  .tabs .lights i { width: 10px; height: 10px; border-radius: 50%; display: block; }
+  .tab {
+    display: flex; align-items: center; gap: 7px; width: 170px; height: 32px; padding: 0 10px; margin-bottom: 4px;
+    border-radius: 7px; font-size: 11px; color: #cfcfd8; white-space: nowrap; overflow: hidden;
+  }
+  .tab.active { background: #42414d; color: #fbfbfe; box-shadow: 0 0 4px rgba(0,0,0,0.4); }
+  .tab .fav { width: 13px; height: 13px; border-radius: 4px; flex-shrink: 0; }
+  .navbar { display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 12px; background: #2b2a33; border-bottom: 1px solid #0c0c0d; }
+  .navbar .ico { width: 14px; height: 14px; color: #a8a8b3; flex-shrink: 0; }
+  .urlbar {
+    flex: 1; height: 28px; border-radius: 6px; background: #1c1b22; display: flex; align-items: center; gap: 8px; padding: 0 10px;
+    font-size: 11.5px; color: #fbfbfe; white-space: nowrap; overflow: hidden;
+  }
+  .urlbar .rest { color: #9c9ca8; }
+  .navbar .ext { width: 20px; height: 20px; border-radius: 5px; display: grid; place-items: center; background: #52525e; }
+  .navbar .ext img { width: 16px; height: 16px; }
+  .ffbody { display: flex; background: #f9f9fb; }
+  .sidebar { flex: none; display: flex; flex-direction: column; background: #f9f9fb; border-right: 1px solid #d7d7db; position: relative; }
+  .sidebar-head { display: flex; align-items: center; gap: 7px; height: 30px; padding: 0 10px; font-size: 12px; font-weight: 700; color: #15141a; flex: none; }
+  .sidebar-head img { width: 15px; height: 15px; }
+  .sidebar-head .x { margin-left: auto; color: #5b5b66; font-weight: 400; font-size: 15px; }
+  .sidebar .shot, .ffpage .shot { position: relative; }
+  .ffpage { flex: 1; overflow: hidden; position: relative; }
+
+  /* ---- Social / docs previews: 1280x640, no second paragraph ----------- */
+  html.social, body.social { height: 640px; }
+  .social .logo { top: 38px; }
+  .social .copy { top: 104px; }
+  .social .features { bottom: 36px; }
+  .no-features .features { display: none; }
+</style>
+</head>
+<body>
+  <div class="logo"><img id="logoImg" src="" alt=""><div class="name">Mirrorly</div></div>
+
+  <div class="copy">
+    <div class="eyebrow"><span class="dash"></span><span id="eyebrow"></span></div>
+    <div class="headline" id="headline"></div>
+    <div class="subcopy" id="subcopy"></div>
+    <div class="cta" id="cta"></div>
+    <div class="more" id="more"></div>
+  </div>
+
+  <div class="features" id="features"></div>
+  <div class="dots" id="dots"></div>
+
+  <div class="stage" id="stage"></div>
+  <svg class="wires" id="wires"></svg>
+
+<script>
+  const COLORS = { blue: '#6e8cf6', green: '#4fc98a', purple: '#a97bf0', pink: '#e277c3', orange: '#ef9a52', teal: '#3cc8c0', yellow: '#e3c443' };
+  const FEATURE_DOTS = ['#6e8cf6', '#a97bf0', '#e277c3', '#4fc98a'];
+  const S = 'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
+  const ICONS = {
+    phone: `<svg ${S}><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></svg>`,
+    desktop: `<svg ${S}><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>`,
+    scroll: `<svg ${S}><path d="M12 3v18M7 8l5-5 5 5M7 16l5 5 5-5"/></svg>`,
+    tap: `<svg ${S}><path d="M9 11V5.5a1.5 1.5 0 0 1 3 0V11l3.6.9a2 2 0 0 1 1.5 2.3L16.4 19a2 2 0 0 1-2 1.6H11a2 2 0 0 1-1.6-.8L6 15.5a1.6 1.6 0 0 1 2.4-2.1L9 14"/></svg>`,
+    keyboard: `<svg ${S}><rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6.5 10h.01M10 10h.01M13.5 10h.01M17 10h.01M8 14h8"/></svg>`,
+    link: `<svg ${S}><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/></svg>`,
+    island: `<svg ${S}><rect x="5" y="2.5" width="14" height="19" rx="3.5"/><rect x="9" y="4.6" width="6" height="2.2" rx="1.1" fill="currentColor"/></svg>`,
+    toolbar: `<svg ${S}><rect x="3" y="14" width="18" height="6" rx="3"/><path d="M7 17h.01M12 17h4"/></svg>`,
+    resize: `<svg ${S}><path d="M4 9V4h5M20 15v5h-5M4 4l6 6M20 20l-6-6"/></svg>`,
+    hand: `<svg ${S}><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg>`,
+    type: `<svg ${S}><path d="M4 7V5h16v2M9 19h6M12 5v14"/></svg>`,
+    moon: `<svg ${S}><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>`,
+    agent: `<svg ${S}><rect x="4" y="6" width="16" height="12" rx="2"/><path d="M8 10h.01M16 10h.01M9 14h6"/></svg>`,
+    camera: `<svg ${S}><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>`,
+    rotate: `<svg ${S}><rect x="3" y="9" width="12" height="12" rx="2"/><path d="M11 3h3a6 6 0 0 1 6 6v2M17 8l3 3 3-3"/></svg>`,
+  };
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  function renderCopy(s, opts) {
+    document.getElementById('logoImg').src = opts.logo;
+    document.getElementById('eyebrow').textContent = s.eyebrow;
+    document.getElementById('headline').innerHTML = `${esc(s.headline[0])}<span class="accent">${esc(s.headline[1])}</span>`;
+    document.getElementById('subcopy').textContent = s.subcopy;
+    document.getElementById('more').textContent = opts.social ? '' : (s.more || '');
+    document.getElementById('cta').textContent = opts.cta;
+    document.getElementById('features').innerHTML = s.features
+      .map((f, i) => `<span><i class="dot" style="background:${FEATURE_DOTS[i % FEATURE_DOTS.length]}"></i>${esc(f)}</span>`).join('');
+    document.getElementById('dots').innerHTML = opts.social ? '' : Array.from({ length: opts.total })
+      .map((_, i) => `<i class="${i === opts.index ? 'active' : ''}"></i>`).join('');
+  }
+
+  // A shot: an image at {x, y, w} (slide px), rounded to `radius` (image CSS
+  // px, from the capture), optionally rotated/tilted, with markers for the
+  // callouts that point at it.
+  function makeShot(shot, image, boxes) {
+    const el = document.createElement('div');
+    el.className = `shot${shot.glow === false ? '' : ' glow'}${shot.dim ? ' dim' : ''}`;
+    el.style.left = shot.x + 'px';
+    el.style.top = shot.y + 'px';
+    el.style.width = shot.w + 'px';
+    if (shot.z) el.style.zIndex = shot.z;
+    const t = [];
+    if (shot.tiltY) t.push(`rotateY(${shot.tiltY}deg)`);
+    if (shot.tiltX) t.push(`rotateX(${shot.tiltX}deg)`);
+    if (shot.rotate) t.push(`rotate(${shot.rotate}deg)`);
+    if (t.length) el.style.transform = t.join(' ');
+    const size = boxes?._size;
+    const k = size ? shot.w / size.w : 1;
+    const radius = shot.radius ?? (boxes?._radius != null ? boxes._radius * k : 12);
+    el.innerHTML = `<div class="clip" style="border-radius:${radius}px"><img src="${image}"></div>`;
+    el.dataset.k = k;
+    return el;
+  }
+
+  // Marker at a point in a shot: a box name from its capture (centre, or an
+  // edge with `at`), or {fx, fy} fractions of the image.
+  function addMarker(shotEl, boxes, target) {
+    const m = document.createElement('i');
+    m.className = 'marker';
+    if (typeof target === 'string') {
+      const b = boxes[target];
+      const size = boxes._size;
+      const at = target.at || 'center';
+      m.style.left = ((b.x + b.w / 2) / size.w) * 100 + '%';
+      m.style.top = ((b.y + b.h / 2) / size.h) * 100 + '%';
+    } else {
+      m.style.left = target.fx * 100 + '%';
+      m.style.top = target.fy * 100 + '%';
+    }
+    shotEl.querySelector('.clip').appendChild(m);
+    return m;
+  }
+
+  function drawCallouts(s, markers) {
+    const stage = document.getElementById('stage');
+    let wires = '';
+    for (const c of s.callouts || []) {
+      const card = document.createElement('div');
+      card.className = 'callout';
+      const tint = COLORS[c.color] || COLORS.blue;
+      card.innerHTML = `<span class="ic" style="background:${tint}26;color:${tint}">${ICONS[c.icon] || ''}</span>`
+        + `<span><div class="t">${esc(c.title)}</div>${c.sub ? `<div class="s">${esc(c.sub)}</div>` : ''}</span>`;
+      card.style.left = c.x + 'px';
+      card.style.top = c.y + 'px';
+      document.body.appendChild(card);
+      const m = markers[c.id];
+      if (!m) continue;
+      const r = m.getBoundingClientRect();
+      const tx = r.left + r.width / 2;
+      const ty = r.top + r.height / 2;
+      const cr = card.getBoundingClientRect();
+      const fromLeft = tx < cr.left;
+      const x1 = fromLeft ? cr.left : cr.right;
+      const y1 = cr.top + cr.height / 2;
+      const mid = (x1 + tx) / 2;
+      wires += `<path class="wire" d="M${x1} ${y1} C${mid} ${y1}, ${mid} ${ty}, ${tx} ${ty}"/>`
+        + `<circle class="wire-end" cx="${tx}" cy="${ty}" r="4.5"/><circle class="wire-end" cx="${x1}" cy="${y1}" r="3.5"/>`;
+    }
+    document.getElementById('wires').innerHTML = wires;
+  }
+
+  function drawTags(s) {
+    for (const t of s.tags || []) {
+      const el = document.createElement('div');
+      el.className = 'tag';
+      el.textContent = t.text;
+      el.style.left = t.x + 'px';
+      el.style.top = t.y + 'px';
+      document.body.appendChild(el);
+    }
+  }
+
+  // Connectors are measured from the laid-out images, so wait for them.
+  const imagesLoaded = () => Promise.all([...document.images].map((img) => img.decode().catch(() => {})));
+
+  async function renderPhones(s, opts) {
+    const stage = document.getElementById('stage');
+    const markers = {};
+    s.shots.forEach((shot, i) => {
+      const boxes = opts.boxes[i];
+      const el = makeShot(shot, opts.images[i], boxes);
+      stage.appendChild(el);
+      for (const c of s.callouts || []) {
+        if ((c.shot ?? 0) === i) markers[c.id] = addMarker(el, boxes, c.target);
+      }
+    });
+    await imagesLoaded();
+    drawCallouts(s, markers);
+  }
+
+  async function renderBrowser(s, opts) {
+    const B = s.browser;
+    const ff = document.createElement('div');
+    ff.className = 'ff';
+    Object.assign(ff.style, { left: B.x + 'px', top: B.y + 'px', width: B.w + 'px' });
+    const ext = `<img src="${opts.logo}">`;
+    ff.innerHTML = `
+      <div class="tabs"><span class="lights"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></span>
+        ${B.tabs.map((t) => `<div class="tab${t.active ? ' active' : ''}"><i class="fav" style="background:${t.fav}"></i>${esc(t.title)}</div>`).join('')}</div>
+      <div class="navbar">
+        <svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3 5 8l5 5"/></svg>
+        <svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="opacity:.45"><path d="m6 3 5 5-5 5"/></svg>
+        <svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M13 8a5 5 0 1 1-1.5-3.6M13 2.5V5h-2.5"/></svg>
+        <div class="urlbar"><span>${esc(B.host)}<span class="rest">${esc(B.rest || '')}</span></span></div>
+        <div class="ext">${ext}</div>
+      </div>
+      <div class="ffbody" style="height:${B.h}px">
+        <div class="sidebar" style="width:${B.sidebarW}px"><div class="sidebar-head">${ext}Mirrorly<span class="x">×</span></div></div>
+        <div class="ffpage"></div>
+      </div>`;
+    document.getElementById('stage').appendChild(ff);
+    const markers = {};
+    const side = makeShot({ x: 0, y: 0, w: B.sidebarW, glow: false, radius: 0 }, opts.images[0], opts.boxes[0]);
+    ff.querySelector('.sidebar').appendChild(side);
+    const page = makeShot({ x: 0, y: 0, w: B.w - B.sidebarW, glow: false, radius: 0 }, opts.images[1], opts.boxes[1]);
+    ff.querySelector('.ffpage').appendChild(page);
+    for (const c of s.callouts || []) markers[c.id] = addMarker(c.shot === 1 ? page : side, null, c.target);
+    await imagesLoaded();
+    drawCallouts(s, markers);
+  }
+
+  window.render = async function (s, opts) {
+    document.documentElement.className = opts.social ? 'social' : '';
+    document.body.className = [opts.social ? 'social' : '', s.hideFeatures ? 'no-features' : ''].join(' ');
+    renderCopy(s, opts);
+    if (s.layout === 'browser') await renderBrowser(s, opts);
+    else await renderPhones(s, opts);
+    drawTags(s);
+  };
+</script>
+</body>
+</html>

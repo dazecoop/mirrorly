@@ -1,0 +1,74 @@
+{
+  "manifest_version": 2,
+  "name": "Mirrorly",
+  "version": "1.0.0",
+  "description": "See the page you're on as a phone would, in the sidebar: real iPhone and Android frames, with scrolling, taps, typing and pages kept in sync with the desktop tab.",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "96": "icons/icon-96.png",
+    "128": "icons/icon-128.png"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "mirrorly@dazecoop",
+      "strict_min_version": "128.0",
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ]
+      }
+    }
+  },
+  "permissions": [
+    "tabs",
+    "storage",
+    "webRequest",
+    "webRequestBlocking",
+    "downloads",
+    "webNavigation",
+    "<all_urls>"
+  ],
+  "background": {
+    "scripts": [
+      "shared.js",
+      "background.js"
+    ],
+    "persistent": true
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "shared.js",
+        "styles.js",
+        "touch.js",
+        "content.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ],
+  "sidebar_action": {
+    "default_title": "Mirrorly",
+    "default_panel": "sidebar/sidebar.html",
+    "default_icon": "icons/icon.svg",
+    "open_at_install": false
+  },
+  "browser_action": {
+    "default_title": "Toggle mobile view",
+    "default_icon": "icons/icon.svg"
+  },
+  "commands": {
+    "_execute_sidebar_action": {
+      "suggested_key": {
+        "default": "Alt+Shift+M"
+      },
+      "description": "Toggle the mobile view sidebar"
+    }
+  }
+}
