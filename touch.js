@@ -1,12 +1,14 @@
 'use strict';
 
 // Makes the mobile view behave like a touch screen under a mouse: drag to
-// scroll with momentum, a fingertip instead of the pointer, and no hover
-// effects (styles.js rewrites the CSS; matchMedia answers as a phone would).
+// scroll with momentum, a fingertip instead of the pointer, touch events, and
+// no hover effects (styles.js rewrites the CSS; matchMedia answers as a phone
+// would).
 
 var MirrorlyTouch = (() => {
   const FINGER = 38;
   const DRAG_THRESHOLD = 6;
+  const TOUCH_HANDLERS = ['ontouchstart', 'ontouchmove', 'ontouchend', 'ontouchcancel'];
 
   function patchMatchMedia() {
     const page = window.wrappedJSObject;
@@ -14,6 +16,88 @@ var MirrorlyTouch = (() => {
     try {
       page.matchMedia = exportFunction((query) => real(MirrorlyStyles.swapMedia(String(query))), window);
     } catch {}
+  }
+
+  // --- Touch events
+  //
+  // Desktop Firefox has no touch events, so pages that check for them (or for
+  // pointerType "touch") take their mouse path. The mobile view says it has
+  // them, and fires touchstart/touchmove/touchend alongside the mouse.
+
+  function defineAccessor(target, name, get, set) {
+    try {
+      const page = window.wrappedJSObject;
+      const desc = new page.Object();
+      desc.get = exportFunction(get, window);
+      if (set) desc.set = exportFunction(set, window);
+      desc.configurable = true;
+      page.Object.defineProperty(target, name, desc);
+    } catch {}
+  }
+
+  function patchTouchSupport() {
+    const page = window.wrappedJSObject;
+    defineAccessor(page.PointerEvent.prototype, 'pointerType', () => 'touch');
+    // `'ontouchstart' in window` is the usual test. Handlers assigned to the
+    // properties still run, as listeners.
+    const handlers = new WeakMap();
+    const targets = [page, page.Document.prototype, page.HTMLElement.prototype];
+    for (const target of targets) {
+      for (const name of TOUCH_HANDLERS) {
+        if (name in target) continue;
+        defineAccessor(
+          target,
+          name,
+          function () {
+            return handlers.get(this)?.[name] ?? null;
+          },
+          function (fn) {
+            const own = handlers.get(this) || {};
+            handlers.set(this, own);
+            const type = name.slice(2);
+            if (own[name]) this.removeEventListener(type, own[name]);
+            own[name] = typeof fn === 'function' ? fn : null;
+            if (own[name]) this.addEventListener(type, own[name]);
+          },
+        );
+      }
+    }
+  }
+
+  // A list of touches as the page sees one: indexable, with length and item().
+  function touchList(touches) {
+    const list = cloneInto(touches, window, { wrapReflectors: true });
+    exportFunction((i) => list[i] ?? null, list, { defineAs: 'item' });
+    return list;
+  }
+
+  // Fires a touch event at `target` for the mouse event `e`. Returns false if
+  // the page cancelled it.
+  function fireTouch(type, e, target) {
+    const page = window.wrappedJSObject;
+    const touch = {
+      identifier: 0, target, clientX: e.clientX, clientY: e.clientY, pageX: e.pageX, pageY: e.pageY,
+      screenX: e.screenX, screenY: e.screenY, radiusX: 11.5, radiusY: 11.5, rotationAngle: 0, force: 1,
+    };
+    const lifted = type === 'touchend' || type === 'touchcancel';
+    const lists = {
+      touches: touchList(lifted ? [] : [touch]),
+      targetTouches: touchList(lifted ? [] : [touch]),
+      changedTouches: touchList([touch]),
+    };
+    const event = new page.Event(type, cloneInto({ bubbles: true, cancelable: true, composed: true }, window));
+    for (const [name, value] of Object.entries(lists)) {
+      const desc = new page.Object();
+      desc.value = value;
+      desc.enumerable = true;
+      page.Object.defineProperty(event, name, desc);
+    }
+    for (const key of ['altKey', 'ctrlKey', 'metaKey', 'shiftKey']) {
+      const desc = new page.Object();
+      desc.value = e[key];
+      page.Object.defineProperty(event, key, desc);
+    }
+    return target.dispatchEvent(event);
   }
 
   // --- Fingertip
@@ -109,6 +193,11 @@ var MirrorlyTouch = (() => {
     let velocity = { x: 0, y: 0 };
     let glide = 0;
     let swallowClick = false;
+    // The element a touch started on (touch events keep that target), and
+    // whether the page cancelled the touch, as a carousel taking over a
+    // swipe does. A cancelled touch doesn't scroll the page.
+    let touchTarget = null;
+    let touchCancelled = false;
 
     const stopGlide = () => cancelAnimationFrame(glide);
 
@@ -117,6 +206,11 @@ var MirrorlyTouch = (() => {
       (e) => {
         stopGlide();
         pressFinger(true);
+        touchTarget = null;
+        if (e.button === 0 && e.target instanceof Element) {
+          touchTarget = e.target;
+          touchCancelled = !fireTouch('touchstart', e, touchTarget);
+        }
         if (e.button !== 0 || !(e.target instanceof Element) || e.target.closest(FIELD)) {
           start = null;
           return;
@@ -133,7 +227,8 @@ var MirrorlyTouch = (() => {
       'mousemove',
       (e) => {
         moveFinger(e);
-        if (!start || !(e.buttons & 1)) return;
+        if (touchTarget && e.buttons & 1 && !fireTouch('touchmove', e, touchTarget)) touchCancelled = true;
+        if (!start || !(e.buttons & 1) || touchCancelled) return;
         if (!dragging) {
           const dx = e.clientX - start.x;
           const dy = e.clientY - start.y;
@@ -160,8 +255,10 @@ var MirrorlyTouch = (() => {
 
     addEventListener(
       'mouseup',
-      () => {
+      (e) => {
         pressFinger(false);
+        if (touchTarget) fireTouch('touchend', e, touchTarget);
+        touchTarget = null;
         if (!start) return;
         start = null;
         if (!dragging) return;
@@ -208,6 +305,7 @@ var MirrorlyTouch = (() => {
     // Called at document_start.
     enable() {
       patchMatchMedia();
+      patchTouchSupport();
       enableDragScroll();
 
       const ready = () => {

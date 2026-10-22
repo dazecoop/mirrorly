@@ -29,19 +29,24 @@ rectangle at a phone's width. Mirrorly does more:
 - **It keeps everything in sync.** Scrolling, taps, typing and page changes
   are mirrored between the desktop tab and the phone, both ways.
 - **Desktop and mobile are on screen at once.** The desktop page stays as it
-  is, with the phone beside it in the sidebar. Or two phones, say an iPhone
-  next to a Pixel.
+  is, with the phone beside it in the sidebar. Or several phones, say an
+  iPhone next to a Pixel.
 
 ## Features
 
 - **Everything in sync.** Scrolling lines up on the same content rather than
   the same percentage, so the phone shows the part of the page you're looking
-  at. Taps on buttons, menus and toggles are mirrored, text typed into a form
+  at, and carousels and scrollable panels follow too. Taps on buttons, menus
+  and toggles are mirrored, text typed into a form
   appears in every view, and links, back/forward, reloads and tab switches carry
   across. It works in both directions, and each part can be turned off.
-- **Two devices at once.** **+ Device** adds a second phone beside the first,
-  say an iPhone next to a Pixel. Both follow the desktop tab, and each other.
-  They're drawn at the same scale, so their sizes compare honestly.
+- **Up to ten devices at once.** **+ Device** adds another phone beside the
+  others, say an iPhone next to a Pixel. They all follow the desktop tab, and
+  each other. They're drawn at the same scale, so their sizes compare
+  honestly, and when they don't all fit the row scrolls sideways.
+- **Show in Mirrorly.** Right-click anything on the page and choose **Show in
+  Mirrorly**: the sidebar opens if it's closed, and each phone scrolls to its
+  copy and outlines it. If it's left out of the mobile layout, you're told.
 - **Real phones.** iPhones from the SE to the 17 Pro Max, Pixel, Galaxy and
   Redmi, the iPad mini, or a custom size. Phones with identical screens share an
   entry (the 402×874 one covers the iPhone 17, 17 Pro and 16 Pro), so the list
@@ -57,9 +62,16 @@ rectangle at a phone's width. Mirrorly does more:
 - **Feels like a touch screen.** A fingertip replaces the pointer, you drag to
   scroll with momentum, and hover effects are switched off: `:hover` never
   applies, and `(hover)`/`(pointer)` media queries answer as a phone would.
-- **Rotate and screenshot.** Turn any phone to landscape, and save a PNG of it
-  to `Downloads/Mirrorly/` at the phone's real resolution (1206×2622 for an
-  iPhone 17 Pro screen), with the frame on a transparent background.
+  The page gets `touchstart`, `touchmove` and `touchend` events, pointer events
+  say `pointerType: "touch"`, and a carousel that takes over a swipe stops the
+  page scrolling, as it would on the phone.
+- **Rotate and screenshot.** Turn any phone to landscape. **Screenshot** saves a
+  PNG to `Downloads/Mirrorly/` at the phone's real resolution (1206×2622 for an
+  iPhone 17 Pro screen): with the frame on a transparent background, just the
+  page as it's shown, or the whole page from top to bottom.
+- **Local and staging sites.** Pages on `localhost`, your network or a staging
+  server work like any other, so you can check the mobile layout while you
+  build it.
 - **Matches your phone.** iOS's Text Size setting for sites that follow it,
   light and dark mode, and the screen size, pixel ratio and safe areas the
   phone would report. Pages without a mobile viewport tag are laid out at 980px
@@ -75,8 +87,8 @@ rectangle at a phone's width. Mirrorly does more:
 Checked against iPhone 17 Pro screenshots of Wikipedia, text wraps line for
 line the same as on the phone, and Airbnb's bottom bar sits exactly where it
 does above Safari's toolbar. The page is still drawn by Firefox's engine, not
-Safari's WebKit or Chrome's Blink, so engine-specific CSS can differ, and the
-page receives mouse events rather than touch events.
+Safari's WebKit or Chrome's Blink, so engine-specific CSS can differ, and
+pinch-zoom isn't emulated.
 
 <img alt="An iPhone 17 Pro in the Mirrorly sidebar with a site's search open and the iOS keyboard showing" src="docs/preview-real-phones.png" />
 
@@ -124,7 +136,8 @@ How it fits together:
 - `content.js` runs in the desktop tab and in each phone. It only reports real
   user input (`isTrusted`), so mirrored clicks and scrolls aren't echoed back.
 - `styles.js` rewrites the phone views' stylesheets: hover off, and Safari's
-  safe-area insets. `touch.js` adds the fingertip and drag-to-scroll.
+  safe-area insets. `touch.js` adds the fingertip, drag-to-scroll and touch
+  events.
 
 ## Limitations
 
@@ -132,8 +145,8 @@ How it fits together:
   Mozilla sites, so the phones show a message there.
 - Some sites refuse to be framed, or redirect when they see a phone user agent.
   A page that reloads itself more than six times in three seconds is stopped.
-- Only page-level scrolling syncs, not scrolling inside scrollable boxes, and a
-  tap only mirrors when the other view has a matching visible element.
+- A tap or a scrolled box only mirrors when the other view has a matching
+  visible element.
 - Landscape toolbars and the light-mode keyboard are close estimates; portrait,
   dark-mode iPhone views are measured from real screenshots.
 

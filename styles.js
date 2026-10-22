@@ -8,6 +8,9 @@
 //   always reports as 0. Safari 26, for example, includes its floating
 //   toolbar in the bottom inset, and pages that opt in with
 //   viewport-fit=cover keep their bottom bars clear of it.
+// - freezeViewport(): viewport-height units as fixed pixels, for full-page
+//   screenshots, where the frame grows to the page's height but 100vh
+//   should stay the height of the phone's screen.
 // Another origin's stylesheets can't be edited in place, so those are fetched,
 // rewritten and swapped in.
 
@@ -22,8 +25,11 @@ var MirrorlyStyles = (() => {
   const SWAP = { hover: 'none', none: 'hover', fine: 'coarse', coarse: 'fine' };
   // env(safe-area-inset-bottom) or env(safe-area-inset-bottom, <fallback>)
   const ENV = /env\(\s*safe-area-inset-(top|right|bottom|left)\s*(?:,(?:[^()]|\([^()]*\))*)?\)/gi;
+  // 100vh, 50svh, 12.5dvh, -1lvh, and vmin/vmax (the height on a phone in
+  // portrait, though not in landscape).
+  const VH = /(-?\d*\.?\d+)(?:[sld]?vh|vmax)\b/gi;
 
-  let options = { noHover: false, insets: () => null };
+  let options = { noHover: false, insets: () => null, viewportHeight: 0 };
 
   function swapMedia(text) {
     return text.replace(MEDIA_FEATURE, (match, any = '', feature, value) => {
@@ -39,14 +45,23 @@ var MirrorlyStyles = (() => {
     return insets ? text.replace(ENV, (match, side) => `${insets[side.toLowerCase()] || 0}px`) : text;
   }
 
-  const done = new WeakSet();
-  const ruleCounts = new WeakMap();
+  function replaceViewportUnits(text) {
+    const h = options.viewportHeight;
+    return h ? text.replace(VH, (match, n) => `${+((Number(n) * h) / 100).toFixed(3)}px`) : text;
+  }
+
+  let done = new WeakSet();
+  let ruleCounts = new WeakMap();
+  // Media already swapped. Swapping flips a query, so each is done once.
+  const swapped = new WeakSet();
+  const pending = new Set(); // cross-origin sheets being fetched
 
   function rewriteRules(rules) {
     for (const rule of rules) {
       if (done.has(rule)) continue;
       done.add(rule);
-      if (options.noHover && rule.media && HAS_FEATURE.test(rule.media.mediaText)) {
+      if (options.noHover && rule.media && !swapped.has(rule) && HAS_FEATURE.test(rule.media.mediaText)) {
+        swapped.add(rule);
         try {
           rule.media.mediaText = swapMedia(rule.media.mediaText);
         } catch {}
@@ -56,8 +71,9 @@ var MirrorlyStyles = (() => {
           rule.selectorText = rule.selectorText.replaceAll(':hover', NO_HOVER);
         } catch {}
       }
-      if (rule.style && rule.style.cssText.includes('safe-area-inset')) {
-        const text = replaceInsets(rule.style.cssText);
+      if (rule.style && (rule.style.cssText.includes('safe-area-inset') || (options.viewportHeight && VH.test(rule.style.cssText)))) {
+        VH.lastIndex = 0;
+        const text = replaceViewportUnits(replaceInsets(rule.style.cssText));
         if (text !== rule.style.cssText) {
           try {
             rule.style.cssText = text;
@@ -74,7 +90,9 @@ var MirrorlyStyles = (() => {
     try {
       rules = sheet.cssRules;
     } catch {
-      replaceCrossOrigin(sheet);
+      const job = replaceCrossOrigin(sheet);
+      pending.add(job);
+      job.finally(() => pending.delete(job));
       return;
     }
     if (ruleCounts.get(sheet) === rules.length) return;
@@ -123,7 +141,15 @@ var MirrorlyStyles = (() => {
         style.sheet.insertRule(rule.cssText, style.sheet.cssRules.length);
       } catch {}
     }
-    for (const rule of style.sheet.cssRules) done.add(rule);
+    // The copies were rewritten before they went in.
+    const mark = (rules) => {
+      for (const rule of rules) {
+        done.add(rule);
+        if (rule.media) swapped.add(rule);
+        if (rule.cssRules) mark(rule.cssRules);
+      }
+    };
+    mark(style.sheet.cssRules);
     ruleCounts.set(style.sheet, style.sheet.cssRules.length);
     link.disabled = true;
   }
@@ -131,6 +157,8 @@ var MirrorlyStyles = (() => {
   function rewriteAll() {
     if (options.noHover) {
       for (const link of document.querySelectorAll('link[rel~="stylesheet" i][media]')) {
+        if (swapped.has(link)) continue;
+        swapped.add(link);
         const media = swapMedia(link.media);
         if (media !== link.media) link.media = media;
       }
@@ -138,11 +166,28 @@ var MirrorlyStyles = (() => {
     for (const el of document.querySelectorAll('[style*="safe-area-inset"]')) {
       el.setAttribute('style', replaceInsets(el.getAttribute('style')));
     }
+    if (options.viewportHeight) {
+      for (const el of document.querySelectorAll('[style*="vh"], [style*="vmax"]')) {
+        const text = replaceViewportUnits(el.getAttribute('style'));
+        if (text !== el.getAttribute('style')) el.setAttribute('style', text);
+      }
+    }
     for (const sheet of document.styleSheets) rewriteSheet(sheet);
   }
 
   return {
     swapMedia,
+
+    // Fixes viewport-height units at `height` from now on, in every
+    // stylesheet (rewriting the ones already done), and resolves once
+    // cross-origin sheets are in.
+    async freezeViewport(height) {
+      options.viewportHeight = height;
+      done = new WeakSet();
+      ruleCounts = new WeakMap();
+      rewriteAll();
+      await Promise.all(pending);
+    },
 
     // Called at document_start.
     start(opts) {

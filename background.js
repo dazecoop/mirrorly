@@ -96,6 +96,7 @@ function refreshActive() {
 function allowed(type) {
   switch (type) {
     case 'scroll':
+    case 'boxScroll':
     case 'requestScroll':
       return settings.syncScroll;
     case 'click':
@@ -189,7 +190,8 @@ async function onMobileLocation(windowId, slot, url) {
 //
 // Sidebar frames can't be captured, so a screenshot rebuilds the same phone
 // in a background tab (the sidebar page in capture mode), scrolls it to the
-// same place, and captures that tab at the phone's pixel ratio.
+// same place, and captures that tab at the phone's pixel ratio. A full-page
+// screenshot grows that phone's screen to the page's height instead.
 
 const captures = new Map(); // capture id -> { windowId, config, url, scroll, tabId }
 
@@ -213,7 +215,7 @@ async function startCapture(windowId, msg) {
     active: false,
     windowId,
   });
-  captures.set(id, { windowId, config: msg.config, url: msg.url, scroll, tabId: tab.id });
+  captures.set(id, { windowId, config: msg.config, url: msg.url, mode: msg.mode || 'frame', scroll, tabId: tab.id });
 }
 
 function onCapturePage(port, id) {
@@ -225,7 +227,7 @@ function onCapturePage(port, id) {
   const key = `capture-${id}`;
   sidebars.set(key, port);
   views.set(key, new Map());
-  port.postMessage({ type: 'setup', config: job.config, url: job.url });
+  port.postMessage({ type: 'setup', config: job.config, url: job.url, mode: job.mode });
 
   const finish = (text) => {
     captures.delete(id);
@@ -240,6 +242,8 @@ function onCapturePage(port, id) {
       viewsOf(key).set(msg.slot, { token: msg.token, frameId: msg.frameId, uaKey: msg.uaKey, port: null, url: null });
     } else if (msg.type === 'scrollTo') {
       viewsOf(key).get(msg.slot)?.port?.postMessage({ type: 'scrollTo', ...job.scroll });
+    } else if (msg.type === 'freezeViewport' || msg.type === 'measurePage') {
+      viewsOf(key).get(msg.slot)?.port?.postMessage({ type: msg.type });
     } else if (msg.type === 'captureReady') {
       try {
         const dataUrl = await browser.tabs.captureTab(job.tabId, { format: 'png', rect: msg.rect, scale: msg.scale });
@@ -331,7 +335,7 @@ function onMobile(port, windowId, token) {
   port.onMessage.addListener((msg) => {
     if (msg.type === 'location') {
       onMobileLocation(windowId, slot, msg.url);
-    } else if (msg.type === 'tint' || msg.type === 'viewport' || msg.type === 'keyboard') {
+    } else if (['tint', 'viewport', 'keyboard', 'located', 'pageSize'].includes(msg.type)) {
       sidebars.get(windowId)?.postMessage({ ...msg, slot });
     } else if (msg.type === 'gesture') {
       gestures.set(windowId, Date.now());
@@ -340,7 +344,10 @@ function onMobile(port, windowId, token) {
       view.pendingScroll = null;
     } else if (msg.type === 'ready') {
       if (String(windowId).startsWith('capture-')) sidebars.get(windowId)?.postMessage({ type: 'phoneReady', slot });
-      else if (settings.syncScroll) desktopPortFor(windowId)?.postMessage({ type: 'requestScroll' });
+      else {
+        if (settings.syncScroll) desktopPortFor(windowId)?.postMessage({ type: 'requestScroll' });
+        locatePending(windowId, slot, view);
+      }
     } else if (allowed(msg.type)) {
       relay(windowId, msg, slot);
     }
@@ -364,6 +371,10 @@ function onDesktop(port) {
   port.postMessage({ type: 'active', on: port.mirrorlyActive });
 
   port.onMessage.addListener((msg) => {
+    if (msg.type === 'locate') {
+      locateInPhones(tabWindows.get(tabId), msg.target);
+      return;
+    }
     if (!isPaired(tabId) || !allowed(msg.type)) return;
     relay(tabWindows.get(tabId), msg);
   });
@@ -382,6 +393,55 @@ browser.runtime.onConnect.addListener((port) => {
   else if (kind === 'mobile') onMobile(port, windowKey, token);
   else if (kind === 'desktop') onDesktop(port);
 });
+
+// --- "Show in Mirrorly": a context menu item on web pages. It opens the
+// sidebar if it's closed, and each phone scrolls to its copy of the element
+// once its page is ready.
+
+const LOCATE_WAIT_MS = 15000;
+const pendingLocates = new Map(); // windowId -> { target, until, done: Set of slots }
+
+browser.menus.create({
+  id: 'mirrorly-locate',
+  title: 'Show in Mirrorly',
+  contexts: ['all'],
+  documentUrlPatterns: ['http://*/*', 'https://*/*'],
+});
+
+browser.menus.onClicked.addListener((info, tab) => {
+  if (info.menuItemId !== 'mirrorly-locate' || !tab) return;
+  // Opening the sidebar has to happen right away, while this counts as the
+  // user's click.
+  if (!sidebars.has(tab.windowId)) browser.sidebarAction.open();
+  // Only the top frame's content script can describe the element.
+  if (info.frameId !== 0) return;
+  desktops.get(tab.id)?.postMessage({ type: 'findTarget', targetElementId: info.targetElementId });
+});
+
+// Sends the element to every phone showing the page now, and keeps it for
+// phones whose page is still loading (or a sidebar that's still opening).
+function locateInPhones(windowId, target) {
+  const pending = { target, until: Date.now() + LOCATE_WAIT_MS, done: new Set() };
+  for (const [slot, view] of viewsOf(windowId)) {
+    if (!view.port || view.url === null) continue;
+    view.port.postMessage({ type: 'locate', target });
+    pending.done.add(slot);
+  }
+  pendingLocates.set(windowId, pending);
+}
+
+// A phone's page is ready: if an element is waiting, show it once the
+// phone has caught up with the desktop's scroll position.
+function locatePending(windowId, slot, view) {
+  const pending = pendingLocates.get(windowId);
+  if (!pending || pending.done.has(slot)) return;
+  if (Date.now() > pending.until) {
+    pendingLocates.delete(windowId);
+    return;
+  }
+  pending.done.add(slot);
+  setTimeout(() => view.port?.postMessage({ type: 'locate', target: pending.target }), 600);
+}
 
 browser.tabs.onActivated.addListener(({ tabId, windowId }) => {
   activeTabs.set(windowId, tabId);

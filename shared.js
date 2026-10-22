@@ -15,7 +15,7 @@ var Mirrorly = {
     mobileUA: true,
   },
 
-  MAX_DEVICES: 2,
+  MAX_DEVICES: 10,
 
   // Safari 26 freezes the iOS version in its UA at 18_6. iPadOS Safari sends a
   // Mac UA by default, so the iPad preset does too.

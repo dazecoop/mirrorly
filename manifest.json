@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Mirrorly",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "See the page you're on as a phone would, in the sidebar: real iPhone and Android frames, with scrolling, taps, typing and pages kept in sync with the desktop tab.",
   "icons": {
     "16": "icons/icon-16.png",
@@ -27,6 +27,7 @@
     "webRequest",
     "webRequestBlocking",
     "downloads",
+    "menus",
     "webNavigation",
     "<all_urls>"
   ],

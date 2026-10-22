@@ -49,8 +49,9 @@ wants to see the mobile layout without reaching for a real phone every time.</p>
 
 <ul class="pills">
   <li>Works on any site</li>
+  <li>Localhost too</li>
   <li>Signed-in pages too</li>
-  <li>Two phones at once</li>
+  <li>Up to ten devices</li>
   <li>No account needed</li>
   <li>No tracking</li>
   <li>MIT licensed</li>
@@ -85,11 +86,14 @@ rectangle at a phone's width. Mirrorly does more:</p>
 the phone shows the part of the page you're looking at even though its layout is
 much taller. Taps on buttons, menus and toggles are mirrored, text typed into a
 form appears in every view, and links, back and forward, reloads and tab
-switches carry across. It works in both directions, and each part can be turned
-off.</p>
-<p>Add a second device and you can put an iPhone next to a Pixel, both in sync
-with the desktop tab. The phones use your tabs' cookies, so pages you're signed
-in to, like dashboards and admin panels, work in the mobile view too.</p>
+switches carry across. Carousels and scrollable panels follow too. It works in
+both directions, and each part can be turned off.</p>
+<p>Add more devices, up to ten, and you can put an iPhone next to a Pixel, all in
+sync with the desktop tab. The phones use your tabs' cookies, so pages you're
+signed in to, like dashboards and admin panels, work in the mobile view too, and
+so do sites on <code>localhost</code> or a staging server.</p>
+<p>Right-click anything on the page and choose <strong>Show in Mirrorly</strong>: the
+sidebar opens, and each phone scrolls to its copy of it and outlines it.</p>
 
 <img class="hero" src="preview-sync.png" width="1600" height="800" loading="lazy"
      alt="A news site in the Mirrorly sidebar in an iPhone 17 Pro and a Pixel 10, side by side, with the desktop page beside them and callouts for taps, pages and scrolling.">
@@ -124,13 +128,15 @@ screen, and rotate it to landscape.</p>
 <p>With <strong>Touch</strong> on, a fingertip replaces the pointer, you drag to scroll
 (with momentum), and hover effects are switched off: <code>:hover</code> styles never
 apply, and <code>(hover)</code> and <code>(pointer)</code> media queries answer as a phone
-would. Light and dark mode switch the phone's bars and tell the page which to
-use.</p>
+would. The page gets touch events, and pointer events report a touch, so
+carousels and swipe menus behave as they do under a finger. Light and dark mode
+switch the phone's bars and tell the page which to use.</p>
 
 <h2>Screenshots</h2>
 <p><strong>Screenshot</strong> saves a PNG of the phone at its real resolution (1206 × 2622
-for an iPhone 17 Pro screen), with the frame on a transparent background, ready
-for a bug report or a design review.</p>
+for an iPhone 17 Pro screen), ready for a bug report or a design review: with
+the frame on a transparent background, just the page as it's shown, or the whole
+page from top to bottom.</p>
 
 <h2>Privacy</h2>
 <p>Mirrorly has no account, no analytics, no tracking and no server. Your

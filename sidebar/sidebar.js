@@ -26,6 +26,8 @@ const SANDBOX =
 const BEZEL = 12;
 // Space around the phone in capture mode, enough for its outline.
 const CAPTURE_MARGIN = 8;
+// The tallest screenshot, in image px.
+const MAX_CAPTURE_PX = 16000;
 const OUTLINE = 4; // the outer ring drawn around the bezel (box-shadow)
 const captureId = new URLSearchParams(location.search).get('capture');
 
@@ -42,6 +44,12 @@ const MESSAGES = {
   },
 };
 const STAGE_PAD = 10;
+// The order + Device adds devices in. (Android phones get Chrome, as Safari
+// isn't offered for them.)
+const NEW_DEVICES = [
+  'iphone-se', 'iphone-16-pro', 'pixel', 'galaxy-ultra', 'iphone-16-pro-max', 'galaxy', 'iphone-16e', 'redmi-note',
+  'iphone-air', 'pixel-xl', 'ipad-mini',
+];
 const systemDark = matchMedia('(prefers-color-scheme: dark)');
 const SYNC_NAMES = { syncScroll: 'scrolling', syncNav: 'pages', syncClicks: 'taps', syncInputs: 'typing' };
 
@@ -183,7 +191,7 @@ class Pane {
     this.blocked = false;
     this.keyboard = null; // { enter, layer, shift } while a text field in the page has focus
     this.listenToKeyboard();
-    $('.shoot').addEventListener('click', () => this.screenshot());
+    this.listenToShotMenu($('.shoot'), $('.shot-menu'));
     $('.rotate').addEventListener('click', () => {
       this.config.landscape = !this.config.landscape;
       saveDevices();
@@ -236,11 +244,13 @@ class Pane {
 
   device() {
     const d = Mirrorly.device(this.config);
-    return this.config.landscape && d.kind !== 'fit' ? landscapeOf(d) : d;
+    const turned = this.config.landscape && d.kind !== 'fit' ? landscapeOf(d) : d;
+    // A full-page screenshot: the screen as tall as the page.
+    return this.pageHeight ? { ...turned, height: this.pageHeight } : turned;
   }
 
   frameKind() {
-    return Mirrorly.frame(this.config);
+    return this.pageHeight ? 'screen' : Mirrorly.frame(this.config);
   }
 
   uaKey() {
@@ -358,15 +368,39 @@ class Pane {
     this.layout();
   }
 
-  screenshot() {
+  // The Screenshot button opens a menu: the phone with its frame, or just
+  // the page, as much as is on screen or all of it.
+  listenToShotMenu(button, menu) {
+    menu.id = `shot-menu-${this.slot}`;
+    button.popoverTargetElement = menu;
+    menu.addEventListener('beforetoggle', (e) => {
+      button.setAttribute('aria-expanded', String(e.newState === 'open'));
+      if (e.newState !== 'open') return;
+      menu.querySelector('.framed-only').hidden = !this.framed();
+      // Below the button, kept inside the sidebar.
+      const r = button.getBoundingClientRect();
+      menu.style.top = `${r.bottom + 4}px`;
+      menu.style.left = `${Math.max(4, Math.min(r.left, innerWidth - 168))}px`;
+    });
+    for (const item of menu.querySelectorAll('[data-shot]')) {
+      item.addEventListener('click', () => {
+        menu.hidePopover();
+        this.screenshot(item.dataset.shot);
+      });
+    }
+  }
+
+  // mode: 'frame' (the phone as drawn), 'screen' (the page on screen, no
+  // frame or browser bars) or 'full' (the whole page, no frame).
+  screenshot(mode = 'frame') {
     if (!this.currentUrl || this.blocked) return;
     // "Fit sidebar" has no fixed size, so capture it at its current one.
     const config =
       this.device().kind === 'fit'
         ? { device: 'custom', frame: 'screen', customWidth: this.stage.clientWidth, customHeight: this.stage.clientHeight }
         : this.config;
-    port.postMessage({ type: 'capture', slot: this.slot, config, url: this.currentUrl });
-    showNotice('Taking a screenshot…');
+    port.postMessage({ type: 'capture', slot: this.slot, config, url: this.currentUrl, mode });
+    showNotice(mode === 'full' ? 'Taking a full-page screenshot…' : 'Taking a screenshot…');
   }
 
   rebuild() {
@@ -646,10 +680,12 @@ class Pane {
     return this.device().kind !== 'fit' && this.frameKind() !== 'screen';
   }
 
-  // The area to capture: the whole phone and its outline, or just the screen.
+  // The area to capture: the whole phone and its outline, just the screen,
+  // or (without the frame) just the page.
   captureRect() {
-    const r = (this.framed() ? this.phone : this.screen).getBoundingClientRect();
-    const pad = this.framed() ? OUTLINE : 0;
+    const withFrame = this.framed() && !this.frameless;
+    const r = (withFrame ? this.phone : this.frameless ? this.viewport : this.screen).getBoundingClientRect();
+    const pad = withFrame ? OUTLINE : 0;
     return { x: r.left - pad + scrollX, y: r.top - pad + scrollY, width: r.width + pad * 2, height: r.height + pad * 2 };
   }
 
@@ -664,7 +700,7 @@ class Pane {
     canvas.height = image.naturalHeight;
     const ctx = canvas.getContext('2d');
     ctx.drawImage(image, 0, 0);
-    if (this.framed()) {
+    if (this.framed() && !this.frameless) {
       const k = canvas.width / (this.phone.offsetWidth + OUTLINE * 2);
       ctx.globalCompositeOperation = 'destination-in';
       ctx.beginPath();
@@ -679,7 +715,8 @@ class Pane {
     const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}.${pad(now.getMinutes())}.${pad(now.getSeconds())}`;
     // "iPhone 17 / 17 Pro / 16 Pro" -> "iPhone 17"
     const model = d.label.split(' / ')[0];
-    const name = `${model} ${this.framed() ? Mirrorly.FRAMES[this.frameKind()] : ''} ${stamp}`
+    const kind = this.pageHeight ? 'full page' : this.frameless ? 'page' : this.framed() ? Mirrorly.FRAMES[this.frameKind()] : '';
+    const name = `${model} ${kind} ${stamp}`
       .replace(/[\\/:*?"<>|]+/g, '-')
       .replace(/\s+/g, ' ')
       .trim();
@@ -689,15 +726,14 @@ class Pane {
     return filename;
   }
 
-  // The largest scale (up to 1) at which this phone fits its column.
-  fitScale() {
+  // The phone's full size with its frame, or null when it has none to fit
+  // (no page yet, or "Fit sidebar").
+  outerSize() {
     const d = this.device();
-    if ((!this.frame && !this.blocked) || d.kind === 'fit') return 1;
+    if ((!this.frame && !this.blocked) || d.kind === 'fit') return null;
     const framed = this.frameKind() !== 'screen';
     const b = framed ? bezelOf(d) : { left: 0, right: 0, top: 0, bottom: 0 };
-    const outerW = d.width + b.left + b.right;
-    const outerH = d.height + b.top + b.bottom;
-    return Math.min(1, (this.stage.clientWidth - STAGE_PAD * 2) / outerW, (this.stage.clientHeight - STAGE_PAD * 2) / outerH);
+    return { width: d.width + b.left + b.right, height: d.height + b.top + b.bottom };
   }
 
   // The page's own cursor is hidden in touch mode; this stands in for it over
@@ -722,14 +758,42 @@ class Pane {
   }
 }
 
-// Both phones are drawn at the same scale, so their sizes compare truthfully.
-// Screenshots are always taken at full size.
+// Every phone is drawn at the same scale, so their sizes compare truthfully.
+// They shrink to sit side by side in the sidebar, down to MIN_SHARED_SCALE;
+// past that they stay at that size (or what the sidebar's height allows) and
+// the row scrolls sideways. Screenshots are always taken at full size.
+const MIN_SHARED_SCALE = 0.5;
+const PANE_MIN = 200;
+let scale = 1;
+
 function sharedScale() {
-  if (captureId) return 1;
-  return Math.min(1, ...panes.map((pane) => pane.fitScale()));
+  return captureId ? 1 : scale;
+}
+
+function arrangePanes() {
+  if (captureId) return;
+  const sized = panes.filter((pane) => !pane.el.hidden).map((pane) => [pane, pane.outerSize()]);
+  const height = Math.min(...sized.map(([pane]) => pane.stage.clientHeight)) - STAGE_PAD * 2;
+  const style = getComputedStyle(panesEl);
+  const gap = parseFloat(style.columnGap) || 0;
+  const width = panesEl.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+  const column = (width - gap * (sized.length - 1)) / sized.length - STAGE_PAD * 2;
+  let byHeight = 1;
+  let byWidth = 1;
+  for (const [, size] of sized) {
+    if (!size) continue;
+    byHeight = Math.min(byHeight, height / size.height);
+    byWidth = Math.min(byWidth, column / size.width);
+  }
+  const fits = sized.length < 2 || Math.min(byHeight, byWidth) >= MIN_SHARED_SCALE;
+  scale = Math.max(0.05, fits ? Math.min(byHeight, byWidth) : Math.min(byHeight, MIN_SHARED_SCALE));
+  for (const [pane, size] of sized) {
+    pane.el.style.flex = fits ? '' : `0 0 ${Math.max(PANE_MIN, Math.ceil((size?.width || 0) * scale) + STAGE_PAD * 2)}px`;
+  }
 }
 
 function layoutAll() {
+  arrangePanes();
   for (const pane of panes) pane.layout();
 }
 
@@ -758,7 +822,6 @@ function showRestricted(url) {
 
 function updatePaneControls() {
   addDeviceButton.hidden = panes.length >= Mirrorly.MAX_DEVICES;
-  panesEl.classList.toggle('two', panes.length > 1);
   for (const pane of panes) pane.el.querySelector('.remove').hidden = panes.length < 2;
 }
 
@@ -838,11 +901,13 @@ function buildControls() {
 
   addDeviceButton.addEventListener('click', () => {
     if (panes.length >= Mirrorly.MAX_DEVICES) return;
-    // Start the second device as a different phone from the first.
-    const first = panes[0]?.config.device;
-    const pane = addPane({ device: first === 'iphone-se' ? 'iphone-16-pro' : 'iphone-se', frame: 'safari' });
+    // Each new device is one not shown yet, smallest iPhone first.
+    const shown = new Set(panes.map((p) => p.config.device));
+    const device = NEW_DEVICES.find((id) => !shown.has(id)) || NEW_DEVICES[0];
+    const pane = addPane({ device, frame: 'safari' });
     saveDevices();
     if (pageUrl) pane.load(pageUrl);
+    pane.el.scrollIntoView({ inline: 'end', behavior: 'smooth' });
   });
 }
 
@@ -879,11 +944,46 @@ function initCapture() {
   windowId = `capture-${captureId}`;
   port = browser.runtime.connect({ name: `capture:${captureId}` });
   let pane = null;
+  let fullPage = false;
   let started = false;
+  let onPageSize = null;
+
+  // The phone's page height, in its layout px.
+  const pageSize = (type) =>
+    new Promise((resolve) => {
+      const timer = setTimeout(() => resolve(null), 5000);
+      onPageSize = (height) => {
+        clearTimeout(timer);
+        resolve(height);
+      };
+      port.postMessage({ type, slot: pane.slot });
+    });
+
+  // Grows the screen to the page's height (in the screen's px, which differ
+  // for pages laid out wider and zoomed out), until the page stops growing
+  // as late content loads into the newly visible part.
+  async function growToPage() {
+    let height = await pageSize('freezeViewport');
+    for (let tries = 0; height && tries < 4; tries++) {
+      const d = Mirrorly.device(pane.config);
+      const width = pane.config.landscape && d.kind !== 'fit' ? d.height : d.width;
+      const zoom = pane.layoutWidth ? width / pane.layoutWidth : 1;
+      const next = Math.ceil(height * zoom);
+      if (Math.abs(next - (pane.pageHeight || 0)) < 2) break;
+      pane.pageHeight = next;
+      panesEl.style.height = `${next + CAPTURE_MARGIN * 2}px`;
+      pane.layout();
+      await sleep(1500);
+      height = await pageSize('measurePage');
+    }
+  }
 
   port.onMessage.addListener(async (msg) => {
     if (msg.type === 'setup') {
+      fullPage = msg.mode === 'full';
       pane = addPane(msg.config);
+      pane.frameless = msg.mode === 'screen';
+      document.body.classList.toggle('frameless', pane.frameless);
       pane.load(msg.url);
     } else if (!pane) {
       return;
@@ -896,15 +996,24 @@ function initCapture() {
     } else if (msg.type === 'location') {
       pane.currentUrl = msg.url;
       pane.renderOverlay();
+    } else if (msg.type === 'pageSize') {
+      onPageSize?.(msg.height);
+      onPageSize = null;
     } else if (msg.type === 'phoneReady' && !started) {
       started = true;
-      // Let late content settle, restore the scroll position, then capture.
+      // Let late content settle, restore the scroll position (or grow to the
+      // whole page), then capture.
       await sleep(900);
-      port.postMessage({ type: 'scrollTo', slot: pane.slot });
+      if (fullPage) await growToPage();
+      else port.postMessage({ type: 'scrollTo', slot: pane.slot });
       // Lazy-loaded images near the new position need a moment.
       await sleep(1500);
       pane.layout();
-      port.postMessage({ type: 'captureReady', rect: pane.captureRect(), scale: pane.device().dpr || 2 });
+      const rect = pane.captureRect();
+      // Very long pages are saved at a lower pixel ratio, to stay within the
+      // largest image Firefox will make.
+      const scale = Math.min(pane.device().dpr || 2, MAX_CAPTURE_PX / rect.height);
+      port.postMessage({ type: 'captureReady', rect, scale });
     } else if (msg.type === 'captured') {
       try {
         const filename = await pane.saveCapture(msg.dataUrl);
@@ -969,6 +1078,11 @@ async function init() {
       pane.showMessage('loop');
     } else if (msg.type === 'keyboard') {
       pane.setKeyboard(msg);
+    } else if (msg.type === 'located') {
+      const d = pane.device();
+      const name = d.id === 'custom' || d.kind === 'fit' ? 'phone' : d.label.split(' / ')[0];
+      if (!msg.found) showNotice(`That isn't on the ${name}'s page. It may be left out of the mobile layout.`);
+      else if (msg.nearest) showNotice(`That's hidden on the ${name}, so the part of the page around it is shown instead.`);
     }
   });
 

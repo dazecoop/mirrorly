@@ -12,6 +12,7 @@
     : String(window.name).split('|');
   const isMobile = !isTop && prefix === Mirrorly.FRAME_PREFIX;
   if (!isTop && !isMobile) return;
+  let bottomSpace = null; // room below the page for Safari's toolbar
 
   if (isMobile) {
     if (Mirrorly.UA[uaKey]) spoofNavigator(uaKey);
@@ -26,6 +27,21 @@
       });
     }
     if (Number(screenW)) spoofScreen(Number(screenW), Number(screenH), Number(dpr));
+    // Safari's floating toolbar sits over the page, but for pages that don't
+    // extend under it (no viewport-fit=cover) Safari lets the page scroll on
+    // until its end clears the bar, showing the page background below.
+    if (Number(insetBottom)) {
+      addEventListener(
+        'DOMContentLoaded',
+        () => {
+          if (coversScreen()) return;
+          bottomSpace = document.createElement('style');
+          bottomSpace.textContent = `:root::after { content: ""; display: block; height: ${Number(insetBottom)}px; }`;
+          document.documentElement.append(bottomSpace);
+        },
+        { once: true },
+      );
+    }
   }
 
   // The viewport line both views line up on when syncing scroll, as a
@@ -77,6 +93,12 @@
       case 'scroll':
         applyScroll(msg);
         break;
+      case 'boxScroll':
+        applyBoxScroll(msg);
+        break;
+      case 'locate':
+        locate(msg);
+        break;
       case 'requestScroll':
         post(captureScroll());
         break;
@@ -102,6 +124,19 @@
         break;
       case 'input':
         applyInput(msg);
+        break;
+      case 'findTarget':
+        findTarget(msg.targetElementId);
+        break;
+      // Full-page screenshots: fix 100vh at the screen's height, then report
+      // how tall the page is, as often as the sidebar asks while it grows.
+      case 'freezeViewport':
+        bottomSpace?.remove();
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+        MirrorlyStyles.freezeViewport(innerHeight).then(() => post({ type: 'pageSize', height: pageHeight() }));
+        break;
+      case 'measurePage':
+        post({ type: 'pageSize', height: pageHeight() });
         break;
     }
   }
@@ -208,6 +243,10 @@
     return Math.max(0, document.documentElement.scrollHeight - innerHeight);
   }
 
+  function pageHeight() {
+    return Math.max(document.documentElement.scrollHeight, document.body?.scrollHeight || 0);
+  }
+
   // The content under the reference line, skipping fixed and sticky layers.
   function anchorElement() {
     const y = innerHeight * REF;
@@ -270,6 +309,115 @@
     { passive: true },
   );
 
+  // --- Scrolling inside boxes (carousels, side panels, modals)
+  //
+  // The box is found by its path, like a tap's target. The view lines up on
+  // the box's content the way page scrolling does: the item at the box's
+  // leading edge (as a path from the box) and how far into it the edge falls,
+  // with the scroll fraction as a fallback.
+
+  const boxApplying = new WeakMap(); // box -> time until its scroll events are ours
+  const boxTimers = new WeakMap();
+
+  function scrollable(el) {
+    const style = getComputedStyle(el);
+    return (
+      (/(auto|scroll)/.test(style.overflowX) && el.scrollWidth > el.clientWidth) ||
+      (/(auto|scroll)/.test(style.overflowY) && el.scrollHeight > el.clientHeight)
+    );
+  }
+
+  function pathFrom(box, el) {
+    const segs = [];
+    for (let n = el; n && n !== box; n = n.parentElement) segs.unshift(step(n));
+    return segs;
+  }
+
+  // Where the box's content starts on screen: its top-left corner inside
+  // the padding.
+  function contentEdge(box) {
+    const r = box.getBoundingClientRect();
+    const style = getComputedStyle(box);
+    return { r, x: r.left + box.clientLeft + parseFloat(style.paddingLeft), y: r.top + box.clientTop + parseFloat(style.paddingTop) };
+  }
+
+  // The item at the start of the box's content: tried along its leading
+  // edges (the middle of the left edge finds a carousel's card, the middle of
+  // the top edge a list's row).
+  function boxAnchor(box) {
+    const { r, x, y } = contentEdge(box);
+    const points = [[x + 2, (r.top + r.bottom) / 2], [(r.left + r.right) / 2, y + 2], [x + 2, y + 2]];
+    for (const [px, py] of points) {
+      for (const el of document.elementsFromPoint(px, py)) {
+        if (el === box) break;
+        if (!box.contains(el)) continue;
+        const er = el.getBoundingClientRect();
+        return {
+          segs: pathFrom(box, el),
+          rx: er.width ? (x - er.left) / er.width : 0,
+          ry: er.height ? (y - er.top) / er.height : 0,
+        };
+      }
+    }
+    return null;
+  }
+
+  function captureBoxScroll(box) {
+    const maxX = box.scrollWidth - box.clientWidth;
+    const maxY = box.scrollHeight - box.clientHeight;
+    return {
+      type: 'boxScroll',
+      box: describeTarget(box),
+      fx: maxX > 0 ? box.scrollLeft / maxX : 0,
+      fy: maxY > 0 ? box.scrollTop / maxY : 0,
+      anchor: boxAnchor(box),
+    };
+  }
+
+  function applyBoxScroll(msg) {
+    const box = resolveAt(msg.box, msg.box.segs.length - 1);
+    if (!box || box.localName !== msg.box.tag || !visible(box) || !scrollable(box)) return;
+    const maxX = box.scrollWidth - box.clientWidth;
+    const maxY = box.scrollHeight - box.clientHeight;
+    let left = msg.fx * maxX;
+    let top = msg.fy * maxY;
+    const item = msg.anchor ? anchorIn(box, msg.anchor.segs) : null;
+    if (item && visible(item)) {
+      const { x, y } = contentEdge(box);
+      const er = item.getBoundingClientRect();
+      // Edges of the scroll range line up as edges, whatever the widths.
+      if (msg.fx > 0 && msg.fx < 1) left = box.scrollLeft + er.left - x + msg.anchor.rx * er.width;
+      if (msg.fy > 0 && msg.fy < 1) top = box.scrollTop + er.top - y + msg.anchor.ry * er.height;
+    }
+    boxApplying.set(box, performance.now() + 300);
+    box.scrollTo({ left, top, behavior: 'instant' });
+  }
+
+  function anchorIn(box, segs) {
+    try {
+      return segs.length ? box.querySelector(`:scope > ${segs.join(' > ')}`) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  document.addEventListener(
+    'scroll',
+    (e) => {
+      const box = e.target;
+      if (!active || !(box instanceof Element) || box === document.documentElement || box === document.body) return;
+      if (performance.now() < (boxApplying.get(box) || 0) || boxTimers.get(box)) return;
+      boxTimers.set(
+        box,
+        setTimeout(() => {
+          boxTimers.delete(box);
+          if (performance.now() >= (boxApplying.get(box) || 0)) post(captureBoxScroll(box));
+        }, 40),
+      );
+    },
+    { capture: true, passive: true },
+  );
+
   // --- Clicks
 
   // Links to another page aren't mirrored: navigation sync loads the page in
@@ -318,7 +466,7 @@
     return found || (pathOk ? byPath : null);
   }
 
-  function flash(el) {
+  function flash(el, holdMs = 350) {
     const r = el.getBoundingClientRect();
     const box = document.createElement('div');
     box.style.cssText =
@@ -326,8 +474,48 @@
       'box-sizing:border-box;border:2px solid #7c7cf0;border-radius:6px;background:rgba(124,124,240,.12);' +
       'pointer-events:none;z-index:2147483647;transition:opacity .4s ease-out;';
     (document.body || document.documentElement).append(box);
-    setTimeout(() => (box.style.opacity = '0'), 350);
-    setTimeout(() => box.remove(), 800);
+    setTimeout(() => (box.style.opacity = '0'), holdMs);
+    setTimeout(() => box.remove(), holdMs + 450);
+  }
+
+  // --- "Show in Mirrorly" (the page's context menu)
+
+  // The desktop side: describe the element that was right-clicked.
+  function findTarget(id) {
+    let el = null;
+    try {
+      el = browser.menus.getTargetElement(id);
+    } catch {}
+    if (!(el instanceof Element)) return;
+    // Sent even while unpaired: the sidebar may be opening for it.
+    port?.postMessage({ type: 'locate', target: describeTarget(el) });
+  }
+
+  // A phone: scroll its copy of the element into the middle of the screen and
+  // outline it. If the element isn't in this layout, the nearest of its
+  // ancestors that is stands in for it.
+  function locate({ target }) {
+    let el = resolveTarget(target);
+    let nearest = false;
+    for (let d = target.segs.length - 2; !el && d >= 1; d--) {
+      const candidate = resolveAt(target, d);
+      if (candidate && visible(candidate) && !pinned(candidate)) {
+        el = candidate;
+        nearest = true;
+      }
+    }
+    if (!el) {
+      post({ type: 'located', found: false });
+      return;
+    }
+    if (!pinned(el)) {
+      const r = el.getBoundingClientRect();
+      const top = Math.max(0, Math.min(scrollMax(), scrollY + r.top + Math.min(r.height, innerHeight) / 2 - innerHeight / 2));
+      applyingUntil = performance.now() + 300;
+      window.scrollTo({ top, left: scrollX, behavior: 'instant' });
+    }
+    flash(el, 1500);
+    post({ type: 'located', found: true, nearest });
   }
 
   function applyClick(msg) {

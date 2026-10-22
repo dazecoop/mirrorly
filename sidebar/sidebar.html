@@ -106,9 +106,20 @@
           <button class="text-button rotate" type="button" title="Switch between portrait and landscape">
             <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="5.5" width="8" height="8" rx="1.5"/><path d="M7.5 2.5h2.8a3.2 3.2 0 0 1 3.2 3.2v1.8M12 6l1.5 1.5L15 6"/></svg>Rotate
           </button>
-          <button class="text-button shoot" type="button" title="Save a PNG screenshot of this phone to your Downloads folder">
+          <button class="text-button shoot" type="button" title="Save a PNG screenshot of this phone to your Downloads folder" aria-haspopup="menu" aria-expanded="false">
             <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 5.5h2l1.2-1.8h4.6l1.2 1.8h2v7h-11z"/><circle cx="8" cy="8.8" r="2.3"/></svg>Screenshot
           </button>
+          <div class="shot-menu" role="menu" popover>
+            <div class="shot-group framed-only">
+              <span class="shot-label">With frame</span>
+              <button type="button" role="menuitem" data-shot="frame">Visible area</button>
+            </div>
+            <div class="shot-group">
+              <span class="shot-label">Without frame</span>
+              <button type="button" role="menuitem" data-shot="screen">Visible area</button>
+              <button type="button" role="menuitem" data-shot="full">Full page</button>
+            </div>
+          </div>
           <button class="text-button remove" type="button" title="Remove this device">
             <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>Remove
           </button>

@@ -49,7 +49,16 @@ fastest way to get help, report a bug or ask for a feature is to
 Safari's WebKit or Chrome's Blink, so engine-specific CSS can differ. Mirrorly
 gives the page the phone's screen size, user agent, pixel ratio, text size and
 safe areas, and turns off hover, so layouts match in the vast majority of cases.
-It sends mouse events rather than touch events, and pinch-zoom isn't emulated.</p>
+The page gets touch events as well as the mouse's, and pinch-zoom isn't
+emulated.</p>
+
+<h3>Does it work on localhost?</h3>
+<p>Yes. Any <code>http</code> or <code>https</code> page works, including
+<code>localhost</code>, addresses on your network and staging servers.</p>
+
+<h3>How do I find something from the desktop page on the phone?</h3>
+<p>Right-click it and choose <strong>Show in Mirrorly</strong>. Each phone scrolls to it
+and outlines it, or says if the mobile layout leaves it out.</p>
 
 <h3>A site won't load, or keeps reloading itself.</h3>
 <p>Some sites refuse to be shown inside a frame, or detect the phone user agent
@@ -80,7 +89,8 @@ focused by itself. It also needs <strong>Show soft keyboard</strong> on, and por
 
 <h3>Where do screenshots go?</h3>
 <p>To a <code>Mirrorly</code> folder in your Downloads folder, named after the device,
-browser and time.</p>
+browser and time. The <strong>Screenshot</strong> menu offers the phone with its frame,
+just the page as it's shown, or the whole page.</p>
 
 <h2>Feature requests</h2>
 <p>Open an issue describing what you'd like it to do and why. Screenshots from a

@@ -1,16 +1,20 @@
 Summary (250 characters max):
 
-See the page you're on as a phone shows it, beside the desktop tab. Real iPhone and Android frames, browser bars and keyboards, with scrolling, taps, typing and pages kept in sync. Free, private, no account.
+See the page you're on as a phone shows it, beside the desktop tab. Real iPhone and Android frames, browser bars and keyboards, with scrolling, taps, typing and pages kept in sync. Works on localhost too. Free, private, no account.
 
 Description:
 
 Mirrorly shows the page you're on as a phone shows it, in Firefox's sidebar, right next to the desktop version. It's for anyone who builds, tests or reviews websites and wants the mobile layout in view without picking up a real phone every time.
 
-Why not Firefox's Responsive Design Mode? It turns your tab into a blank rectangle at a phone's width. Mirrorly is more accurate, with real device frames, browser bars, keyboards, safe areas and iOS text size, all measured from real phones. It keeps scrolling, taps, typing and pages in sync. And it shows mobile and desktop on screen at the same time, or two phones at once.
+Why not Firefox's Responsive Design Mode? It turns your tab into a blank rectangle at a phone's width. Mirrorly is more accurate, with real device frames, browser bars, keyboards, safe areas and iOS text size, all measured from real phones. It keeps scrolling, taps, typing and pages in sync. And it shows mobile and desktop on screen at the same time, with up to ten devices at once.
 
-- Everything in sync: Scroll the desktop and the phone follows, lined up on the same content. Taps on menus and buttons, text typed into forms, links, back/forward, reloads and tab switches all carry across, in both directions. Each part can be turned off.
+- Everything in sync: Scroll the desktop and the phone follows, lined up on the same content, carousels and scrollable panels included. Taps on menus and buttons, text typed into forms, links, back/forward, reloads and tab switches all carry across, in both directions. Each part can be turned off.
 
-- Two devices at once: Put an iPhone next to a Pixel, both following the desktop tab.
+- Up to ten devices: Put an iPhone next to a Pixel, and more, all following the desktop tab.
+
+- Show in Mirrorly: Right-click anything on the page and each phone scrolls to it and outlines it.
+
+- Local and staging sites: Pages on localhost, your network or a staging server work like any other.
 
 - Signed-in pages work: The phones use your tabs' cookies, so dashboards, admin panels and other pages behind a login show up already signed in.
 
@@ -20,9 +24,9 @@ Why not Firefox's Responsive Design Mode? It turns your tab into a blank rectang
 
 - A keyboard you can type on: Tap a text field and the iOS keyboard (or Gboard on Android) slides up, with the bar each browser puts above it. The page shrinks to fit, as on the phone.
 
-- Feels like a touch screen: A fingertip pointer, drag to scroll with momentum, and no hover effects.
+- Feels like a touch screen: A fingertip pointer, drag to scroll with momentum, touch events for the page, and no hover effects.
 
-- Screenshots: Save a PNG of any phone at its real resolution, with the frame on a transparent background.
+- Screenshots: Save a PNG of any phone at its real resolution, with the frame on a transparent background, just the page, or the whole page top to bottom.
 
 - Matches your phone: iOS's Text Size setting, light and dark mode, and the screen size, pixel ratio and safe areas the phone would report.
 
@@ -40,7 +44,7 @@ Links:
 Screenshots captions (in upload order):
 
 1. Desktop and mobile, side by side: a travel site in a Firefox tab and in an iPhone in the Mirrorly sidebar.
-2. Scrolling, taps, typing and pages kept in sync, here with an iPhone and a Pixel together in the sidebar.
+2. Scrolling, taps, typing and pages kept in sync, here with an iPhone and a Pixel together in the sidebar (up to ten devices).
 3. Frames, browser bars and keyboards measured from real phones.
 4. iPhone, Pixel, Galaxy and more, drawn at the same scale, in Safari, Chrome or Firefox.
-5. Choose what syncs, plus touch, keyboard, text size and appearance settings.
+5. Settings: choose what syncs, plus touch, keyboard, text size and appearance.

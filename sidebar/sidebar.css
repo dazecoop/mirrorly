@@ -260,16 +260,19 @@ button:hover, select:hover { border-color: var(--muted); }
 .url:empty { display: none; }
 
 /* One column per device */
+/* Devices sit side by side; when there are more than fit, sidebar.js gives
+   each a fixed width (arrangePanes) and the row scrolls sideways. */
 #panes {
   flex: 1;
   min-height: 0;
   display: flex;
   gap: 8px;
   padding: 8px;
+  overflow-x: auto;
 }
 .pane {
   flex: 1;
-  min-width: 0;
+  min-width: 200px;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -287,6 +290,27 @@ button:hover, select:hover { border-color: var(--muted); }
 .pane-actions { display: flex; flex-wrap: wrap; gap: 4px; }
 .pane-actions .text-button { flex: 1 0 auto; justify-content: center; }
 .pane-actions .text-button[hidden] { display: none; }
+
+/* The screenshot menu, opened from the Screenshot button. */
+.shot-menu {
+  margin: 0;
+  inset: auto;
+  min-width: 160px;
+  padding: 4px;
+  background: var(--bar);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .25);
+}
+.shot-menu:popover-open { display: grid; gap: 2px; }
+.shot-group { display: grid; }
+.shot-group + .shot-group { border-top: 1px solid var(--line); margin-top: 2px; padding-top: 2px; }
+.shot-group[hidden] { display: none; }
+.shot-group[hidden] + .shot-group { border-top: 0; margin-top: 0; padding-top: 0; }
+.shot-label { padding: 5px 8px 3px; color: var(--muted); font-size: 11px; }
+.shot-menu button { height: auto; padding: 6px 8px 6px 16px; text-align: left; background: none; border: 0; border-radius: 5px; }
+.shot-menu button:hover, .shot-menu button:focus-visible { background: var(--chip); outline: none; }
 .size {
   color: var(--muted);
   font-size: 11px;
@@ -314,6 +338,9 @@ body.capture .bar, body.capture .pane-box { display: none; }
 body.capture .stage { background: none; }
 body.capture #panes { position: absolute; top: 0; left: 0; width: 1400px; height: 1400px; padding: 0; }
 body.capture .phone.bezel { box-shadow: 0 0 0 1.5px #5a5a60, 0 0 0 4px #1c1c1f; }
+/* A screenshot without the frame: just the page, with no browser bars over it. */
+body.capture.frameless .overlay { display: none; }
+body.capture.frameless .screen { border-radius: 0 !important; }
 
 .placeholder {
   margin: 0;
