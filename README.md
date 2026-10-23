@@ -251,6 +251,12 @@ page you're already viewing (or, for AI agents, the pages they open), plus a
 connection to `127.0.0.1` when you let agents use it; the [privacy policy](https://dazecoop.github.io/mirrorly/privacy.html)
 explains each one and every permission.
 
+## Support
+
+If my projects have been useful to you and you'd like to support the work, you can buy me a coffee. Completely optional, but always appreciated!
+
+<a href="https://www.buymeacoffee.com/dazecoop" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me a Coffee" style="height: 60px !important;width: 217px !important;" ></a>
+
 ## Licence
 
 MIT. See [LICENSE](LICENSE).
