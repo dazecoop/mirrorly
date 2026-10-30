@@ -769,18 +769,12 @@ class Pane {
     // out to fit the screen.
     const pageWidth = this.layoutWidth && this.layoutWidth !== g.width ? this.layoutWidth : g.width;
     const zoom = g.width / pageWidth;
-    // At a fractional scale Firefox can draw the page up to a screen pixel
-    // short of its box, showing a sliver of the page colour along the right
-    // and bottom. It's drawn a screen pixel over, clipped by the viewport.
-    // (Screenshots are at whole scales, and keep the page exact.)
-    const px = scale * devicePixelRatio;
-    const bleed = Math.abs(px - Math.round(px)) > 0.001 ? 1 / px : 0;
-    const sx = (zoom * (g.width + bleed)) / g.width;
-    const sy = (zoom * (g.height + bleed)) / g.height;
+    // Not stretched to hide sub-pixel slivers at fractional scales: that cut
+    // off the page's last row (a 1px line along its bottom, say).
     if (this.frame) Object.assign(this.frame.style, {
       width: `${pageWidth}px`,
       height: `${g.height / zoom}px`,
-      transform: sx !== 1 || sy !== 1 ? `scale(${sx}, ${sy})` : '',
+      transform: zoom !== 1 ? `scale(${zoom})` : '',
       background: this.pageColor || '',
     });
 

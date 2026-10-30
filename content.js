@@ -12,6 +12,8 @@
     : String(window.name).split('|');
   const isMobile = !isTop && prefix === Mirrorly.FRAME_PREFIX;
   if (!isTop && !isMobile) return;
+  // Screenshot and agent phones, in background tabs (see steadyFrames).
+  const offscreen = isMobile && /^(capture|agent)-/.test(windowIdText);
   let bottomSpace = null; // room below the page for Safari's toolbar
   // Safe-area insets only apply to pages that extend under the browser's
   // bars with viewport-fit=cover.
@@ -28,6 +30,7 @@
       });
     }
     if (Number(screenW)) spoofScreen(Number(screenW), Number(screenH), Number(dpr));
+    if (offscreen) steadyFrames();
     // Safari 26 ends the page's viewport above the frame's bottom (see
     // Mirrorly.SAFARI_VIEWPORT): the page is told the shorter height, and
     // can scroll until its end reaches the viewport's bottom, as on the phone.
@@ -148,6 +151,7 @@
     if (isMobile) {
       post({ type: 'location', url: location.href });
       post({ type: 'keyboard', show: false });
+      if (offscreen) post({ type: 'frameTick', ms: 16 });
     }
   }
 
@@ -164,6 +168,9 @@
     switch (msg.type) {
       case 'active':
         active = msg.on;
+        break;
+      case 'frameTick':
+        runFrame();
         break;
       case 'scroll':
         applyScroll(msg);
@@ -247,6 +254,46 @@
       desc.configurable = true;
       page.Object.defineProperty(target, name, desc);
     } catch {}
+  }
+
+  // Screenshot and agent phones are in background tabs, which Firefox doesn't
+  // paint. It runs requestAnimationFrame (and timers) there about once a
+  // second, and animations the page starts after it loads (CSS transitions,
+  // element.animate()) wait for a paint to begin, so never do. A glass button
+  // fading in, say, is still invisible at the screenshot. So these phones run
+  // on the background script's clock instead: 60 frames a second while the
+  // page asks for them, and 10 a second otherwise, each one starting any
+  // animations still waiting.
+  let frameCallbacks = new Map();
+  let lastFrameId = 0;
+
+  function steadyFrames() {
+    const page = window.wrappedJSObject;
+    page.requestAnimationFrame = exportFunction((callback) => {
+      frameCallbacks.set(++lastFrameId, callback);
+      return lastFrameId;
+    }, window);
+    page.cancelAnimationFrame = exportFunction((id) => {
+      frameCallbacks.delete(id);
+    }, window);
+  }
+
+  function runFrame() {
+    const now = document.timeline.currentTime;
+    for (const animation of document.getAnimations()) {
+      if (animation.pending && animation.playState === 'running') animation.startTime = now;
+    }
+    const due = frameCallbacks;
+    frameCallbacks = new Map();
+    const time = performance.now();
+    for (const callback of due.values()) {
+      try {
+        callback(time);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    post({ type: 'frameTick', ms: frameCallbacks.size ? 16 : 100 });
   }
 
   function spoofScreen(width, height, ratio) {

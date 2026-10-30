@@ -341,6 +341,11 @@ function onMobile(port, windowId, token) {
       sidebars.get(windowId)?.postMessage({ ...msg, slot });
     } else if (msg.type === 'gesture') {
       gestures.set(windowId, Date.now());
+    } else if (msg.type === 'frameTick' && /^(capture|agent)-/.test(windowId)) {
+      // A screenshot or agent phone's clock (see steadyFrames in content.js).
+      setTimeout(() => {
+        if (view.port === port) port.postMessage({ type: 'frameTick' });
+      }, Math.max(16, Number(msg.ms) || 0));
     } else if (msg.type === 'scrollPos') {
       view.pendingScroll?.({ x: msg.x, y: msg.y });
       view.pendingScroll = null;
